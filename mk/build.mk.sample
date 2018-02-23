@@ -22,8 +22,11 @@
 # Fast build with optimised libraries, no profiling, with LLVM:
 #BuildFlavour = quick-llvm
 
-# Fast build configured for a cross compiler
-#BuildFlavour  = quick-cross
+# Fast build configured for a cross compiler (using the LLVM backend)
+#BuildFlavour = quick-cross
+
+# Fast build configured for a cross compiler (using the NCG backend)
+#BuildFlavour = quick-cross-ncg
 
 # Even faster build.  NOT RECOMMENDED: the libraries will be
 # completely unoptimised, so any code built with this compiler
