@@ -117,7 +117,7 @@
 	ignore = untracked
 [submodule "utils/hsc2hs"]
 	path = utils/hsc2hs
-	url = ../hsc2hs.git
+	url = https://github.com/angerman/hsc2hs.git
 	ignore = untracked
 [submodule "libffi-tarballs"]
 	path = libffi-tarballs
