@@ -320,7 +320,7 @@ deriving instance (DataId p) => Data (ABExport p)
 data PatSynBind idL idR
   = PSB { psb_id   :: Located (IdP idL),       -- ^ Name of the pattern synonym
           psb_fvs  :: PostRn idR NameSet,      -- ^ See Note [Bind free vars]
-          psb_args :: HsPatSynDetails (Located (IdP idR)),
+          psb_args :: HsPatSynDetails (Located (IdP idR)), -- EMMA TODO: confirm
                                                -- ^ Formal parameter names
           psb_def  :: LPat idR,                -- ^ Right-hand side
           psb_dir  :: HsPatSynDir idR          -- ^ Directionality
@@ -717,7 +717,8 @@ instance (SourceTextX idR,
 
       ppr_details = case details of
           InfixCon v1 v2 -> hsep [ppr v1, pprInfixOcc psyn, ppr v2]
-          PrefixCon vs   -> hsep (pprPrefixOcc psyn : map ppr vs)
+          PrefixCon [] vs   -> hsep (pprPrefixOcc psyn : map ppr vs)
+          PrefixCon _ _ -> error "ppr source text x existentials not done (emma)"
           RecCon vs      -> pprPrefixOcc psyn
                             <> braces (sep (punctuate comma (map ppr vs)))
 
@@ -1136,7 +1137,7 @@ pprMinimalSig (L _ bf) = ppr (fmap unLoc bf)
 -}
 
 -- | Haskell Pattern Synonym Details
-type HsPatSynDetails arg = HsConDetails arg [RecordPatSynField arg]
+type HsPatSynDetails arg = HsConDetails () arg [RecordPatSynField arg] -- EMMA TODO: left for your future self
 
 -- See Note [Record PatSyn Fields]
 -- | Record Pattern Synonym Field

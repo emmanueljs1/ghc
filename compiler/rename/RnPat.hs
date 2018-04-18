@@ -509,7 +509,7 @@ rnPatAndThen _ pat = pprPanic "rnLPatAndThen" (ppr pat)
 --------------------
 rnConPatAndThen :: NameMaker
                 -> Located RdrName    -- the constructor
-                -> HsConPatDetails GhcPs
+                -> HsConPatDetails GhcPs -- TODO: must add a type here
                 -> CpsRn (Pat GhcRn)
 
 rnConPatAndThen mk con (PrefixCon pats)

@@ -560,7 +560,8 @@ mkPatSynMatchGroup (L loc patsyn_name) (L _ decls) =
        ; when (null matches) (wrongNumberErr loc)
        ; return $ mkMatchGroup FromSource matches }
   where
-    fromDecl (L loc decl@(ValD (PatBind pat@(L _ (ConPatIn ln@(L _ name) details)) rhs _ _ _))) =
+    -- EMMA TODO: pattern synonym processing?
+    fromDecl (L loc decl@(ValD (PatBind pat@(L _ (ConPatIn ln@(L _ name) _ details)) rhs _ _ _))) =
         do { unless (name == patsyn_name) $
                wrongNameBindingErr loc decl
            ; match <- case details of
@@ -921,27 +922,29 @@ checkPatterns :: SDoc -> [LHsExpr GhcPs] -> P [LPat GhcPs]
 checkPatterns msg es = mapM (checkPattern msg) es
 
 checkLPat :: SDoc -> LHsExpr GhcPs -> P (LPat GhcPs)
-checkLPat msg e@(L l _) = checkPat msg l e []
+checkLPat msg e@(L l _) = checkPat msg l e [] []
 
-checkPat :: SDoc -> SrcSpan -> LHsExpr GhcPs -> [LPat GhcPs]
+checkPat :: SDoc -> SrcSpan -> LHsExpr GhcPs -> [LPat GhcPs] -> [LPat GhcPs]
          -> P (LPat GhcPs)
-checkPat _ loc (L l e@(HsVar (L _ c))) args
-  | isRdrDataCon c = return (L loc (ConPatIn (L l c) (PrefixCon args)))
+checkPat _ loc (L l e@(HsVar (L _ c))) tyargs args
+  | isRdrDataCon c = return (L loc (ConPatIn (L l c) (PrefixCon tyargs args)))
   | not (null args) && patIsRec c =
       patFail (text "Perhaps you intended to use RecursiveDo") l e
-checkPat msg loc e args     -- OK to let this happen even if bang-patterns
-                        -- are not enabled, because there is no valid
-                        -- non-bang-pattern parse of (C ! e)
+checkPat msg loc e tyargs args -- OK to let this happen even if bang-patterns
+                               -- are not enabled, because there is no valid
+                               -- non-bang-pattern parse of (C ! e)
   | Just (e', args') <- splitBang e
   = do  { args'' <- checkPatterns msg args'
-        ; checkPat msg loc e' (args'' ++ args) }
-checkPat msg loc (L _ (HsApp f e)) args
+        ; checkPat msg loc e' tyargs (args'' ++ args) }
+checkPat msg loc (L _ (HsApp f e)) tyargs args
   = do p <- checkLPat msg e
-       checkPat msg loc f (p : args)
-checkPat msg loc (L _ e) []
+       checkPat msg loc f tyargs (p : args)
+checkPat msg loc (L l e@(HsAppType e1 e2)) tyargs args
+  = checkPat msg loc e1 (e2 : tyargs) args
+checkPat msg loc (L _ e) [] []
   = do p <- checkAPat msg loc e
        return (L loc p)
-checkPat msg loc e _
+checkPat msg loc e _ _
   = patFail msg loc (unLoc e)
 
 checkAPat :: SDoc -> SrcSpan -> HsExpr GhcPs -> P (Pat GhcPs)

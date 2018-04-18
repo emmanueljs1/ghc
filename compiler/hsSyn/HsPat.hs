@@ -168,7 +168,7 @@ data Pat p
     -- For details on above see note [Api annotations] in ApiAnnotation
         ------------ Constructor patterns ---------------
   | ConPatIn    (Located (IdP p))
-                (HsConPatDetails p)
+                (HsConPatDetails p)         -- arguments
     -- ^ Constructor Pattern In
 
   | ConPatOut {
@@ -268,10 +268,10 @@ data Pat p
 deriving instance (DataId p) => Data (Pat p)
 
 -- | Haskell Constructor Pattern Details
-type HsConPatDetails p = HsConDetails (LPat p) (HsRecFields p (LPat p))
+type HsConPatDetails p = HsConDetails (LHsSigWcType p) (LPat p) (HsRecFields p (LPat p))
 
 hsConPatArgs :: HsConPatDetails p -> [LPat p]
-hsConPatArgs (PrefixCon ps)   = ps
+hsConPatArgs (PrefixCon _ ps)   = ps
 hsConPatArgs (RecCon fs)      = map (hsRecFieldArg . unLoc) (rec_flds fs)
 hsConPatArgs (InfixCon p1 p2) = [p1,p2]
 
@@ -487,7 +487,8 @@ pprUserCon c (InfixCon p1 p2) = ppr p1 <+> pprInfixOcc c <+> ppr p2
 pprUserCon c details          = pprPrefixOcc c <+> pprConArgs details
 
 pprConArgs :: (SourceTextX p, OutputableBndrId p) => HsConPatDetails p -> SDoc
-pprConArgs (PrefixCon pats) = sep (map pprParendLPat pats)
+pprConArgs (PrefixCon [] pats) = sep (map pprParendLPat pats)
+pprConArgs (PrefixCon _ _) = error "ppr con args not done for tyargs"
 pprConArgs (InfixCon p1 p2) = sep [pprParendLPat p1, pprParendLPat p2]
 pprConArgs (RecCon rpats)   = ppr rpats
 
@@ -519,7 +520,7 @@ mkPrefixConPat :: DataCon -> [OutPat p] -> [Type] -> OutPat p
 -- Make a vanilla Prefix constructor pattern
 mkPrefixConPat dc pats tys
   = noLoc $ ConPatOut { pat_con = noLoc (RealDataCon dc), pat_tvs = [], pat_dicts = [],
-                        pat_binds = emptyTcEvBinds, pat_args = PrefixCon pats,
+                        pat_binds = emptyTcEvBinds, pat_args = PrefixCon [] pats,
                         pat_arg_tys = tys, pat_wrap = idHsWrapper }
 
 mkNilPat :: Type -> OutPat p
@@ -686,7 +687,7 @@ hsPatNeedsParens (NPat {})           = False
 
 -- | Returns 'True' if a constructor pattern must be parenthesized in order
 -- to parse.
-conPatNeedsParens :: HsConDetails a b -> Bool
+conPatNeedsParens :: HsConDetails t a b -> Bool
 conPatNeedsParens (PrefixCon {}) = False
 conPatNeedsParens (InfixCon {})  = True
 conPatNeedsParens (RecCon {})    = False
@@ -729,8 +730,8 @@ isCompoundPat (NPat (L _ p) _ _ _) = isCompoundHsOverLit p
 -- whereas 'isCompountConPat' says if a pattern needs to be parenthesized in an
 -- /argument/ position. In other words, @'conPatNeedsParens' x@ implies
 -- @'isCompoundConPat' x@, but not necessarily the other way around.
-isCompoundConPat :: HsConDetails a b -> Bool
-isCompoundConPat (PrefixCon args) = not (null args)
+isCompoundConPat :: HsConDetails t a b -> Bool
+isCompoundConPat (PrefixCon tyargs args) = not (null tyargs) || not (null args)
 isCompoundConPat (InfixCon {})    = True
 isCompoundConPat (RecCon {})      = False
 
@@ -770,6 +771,6 @@ collectEvVarsPat pat =
                                    $ hsConPatArgs args
     SigPatOut p _     -> collectEvVarsLPat p
     CoPat _ p _       -> collectEvVarsPat  p
-    ConPatIn _  _     -> panic "foldMapPatBag: ConPatIn"
+    ConPatIn _ _     -> panic "foldMapPatBag: ConPatIn"
     SigPatIn _ _      -> panic "foldMapPatBag: SigPatIn"
     _other_pat        -> emptyBag
