@@ -470,15 +470,15 @@ AC_DEFUN([FP_SETTINGS],
     if test "$windows" = YES -a "$EnableDistroToolchain" = "NO"
     then
         mingw_bin_prefix=mingw/bin/
-        SettingsCCompilerCommand="\$topdir/../${mingw_bin_prefix}gcc.exe"
-        SettingsHaskellCPPCommand="\$topdir/../${mingw_bin_prefix}gcc.exe"
+	SettingsCCompilerCommand="\$tooldir/${mingw_bin_prefix}gcc.exe"
+	SettingsHaskellCPPCommand="\$tooldir/${mingw_bin_prefix}gcc.exe"
         SettingsHaskellCPPFlags="$HaskellCPPArgs"
-        SettingsLdCommand="\$topdir/../${mingw_bin_prefix}ld.exe"
-        SettingsArCommand="\$topdir/../${mingw_bin_prefix}ar.exe"
-        SettingsRanlibCommand="\$topdir/../${mingw_bin_prefix}ranlib.exe"
-        SettingsPerlCommand='$topdir/../perl/perl.exe'
-        SettingsDllWrapCommand="\$topdir/../${mingw_bin_prefix}dllwrap.exe"
-        SettingsWindresCommand="\$topdir/../${mingw_bin_prefix}windres.exe"
+	SettingsLdCommand="\$tooldir/${mingw_bin_prefix}ld.exe"
+	SettingsArCommand="\$tooldir/${mingw_bin_prefix}ar.exe"
+	SettingsRanlibCommand="\$tooldir/${mingw_bin_prefix}ranlib.exe"
+	SettingsPerlCommand='$tooldir/perl/perl.exe'
+	SettingsDllWrapCommand="\$tooldir/${mingw_bin_prefix}dllwrap.exe"
+	SettingsWindresCommand="\$tooldir/${mingw_bin_prefix}windres.exe"
         SettingsTouchCommand='$topdir/bin/touchy.exe'
     elif test "$EnableDistroToolchain" = "YES"
     then
@@ -1972,6 +1972,9 @@ AC_DEFUN([GHC_CONVERT_OS],[
       # As far as I'm aware, none of these have relevant variants
       freebsd|netbsd|dragonfly|hpux|linuxaout|kfreebsdgnu|freebsd2|mingw32|darwin|nextstep2|nextstep3|sunos4|ultrix|haiku)
         $3="$1"
+        ;;
+      msys)
+        AC_MSG_ERROR([Building GHC using the msys toolchain is not supported; please use mingw instead. Perhaps you need to set 'MSYSTEM=MINGW64 or MINGW32?'])
         ;;
       aix*) # e.g. powerpc-ibm-aix7.1.3.0
         $3="aix"

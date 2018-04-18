@@ -95,6 +95,8 @@
  *
  * We build up a static object list while collecting generations 0..N,
  * which is then appended to the static object list of generation N+1.
+ *
+ * See also: Note [STATIC_LINK fields] in Storage.h.
  */
 
 /* N is the oldest generation being collected, where the generations
@@ -399,11 +401,6 @@ GarbageCollect (uint32_t collect_gen,
   }
 
   markScheduler(mark_root, gct);
-
-#if defined(RTS_USER_SIGNALS)
-  // mark the signal handlers (signals should be already blocked)
-  markSignalHandlers(mark_root, gct);
-#endif
 
   // Mark the weak pointer list, and prepare to detect dead weak pointers.
   markWeakPtrList();
@@ -1831,8 +1828,8 @@ resize_nursery (void)
    Sanity code for CAF garbage collection.
 
    With DEBUG turned on, we manage a CAF list in addition to the SRT
-   mechanism.  After GC, we run down the CAF list and blackhole any
-   CAFs which have been garbage collected.  This means we get an error
+   mechanism.  After GC, we run down the CAF list and make any
+   CAFs which have been garbage collected GCD_CAF.  This means we get an error
    whenever the program tries to enter a garbage collected CAF.
 
    Any garbage collected CAFs are taken off the CAF list at the same
