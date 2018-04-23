@@ -4,6 +4,7 @@ Author: George Karachalias <george.karachalias@cs.kuleuven.be>
 Pattern Matching Coverage Checking.
 -}
 
+{-# OPTIONS_GHC -fdefer-type-errors #-} -- EMMA TODO: remove!
 {-# LANGUAGE CPP, GADTs, DataKinds, KindSignatures #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -877,7 +878,7 @@ translatePatVec fam_insts pats = mapM (translatePat fam_insts) pats
 -- | Translate a constructor pattern
 translateConPatVec :: FamInstEnvs -> [Type] -> [TyVar]
                    -> ConLike -> HsConPatDetails GhcTc -> DsM PatVec
-translateConPatVec fam_insts _univ_tys _ex_tvs _ (PrefixCon ps)
+translateConPatVec fam_insts _univ_tys _ex_tvs _ (PrefixCon [] ps) -- EMMA TODO: double check
   = concat <$> translatePatVec fam_insts (map unLoc ps)
 translateConPatVec fam_insts _univ_tys _ex_tvs _ (InfixCon p1 p2)
   = concat <$> translatePatVec fam_insts (map unLoc [p1,p2])

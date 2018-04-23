@@ -5,7 +5,7 @@
 
 The @match@ function
 -}
-
+{-# OPTIONS_GHC -fdefer-type-errors #-} -- EMMA TODO: remove!
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -536,9 +536,11 @@ push_bang_into_newtype_arg :: SrcSpan
                            -> HsConPatDetails GhcTc -> HsConPatDetails GhcTc
 -- See Note [Bang patterns and newtypes]
 -- We are transforming   !(N p)   into   (N !p)
-push_bang_into_newtype_arg l _ty (PrefixCon (arg:args))
+push_bang_into_newtype_arg l _ty (PrefixCon [] (arg:args))
   = ASSERT( null args)
     PrefixCon [L l (BangPat noExt arg)]
+push_bang_into_newtype_arg _ _ (PrefixCon _ _)
+  = error "push_bang_into_newtype_arg: prefix con tyvar binding case"
 push_bang_into_newtype_arg l _ty (RecCon rf)
   | HsRecFields { rec_flds = L lf fld : flds } <- rf
   , HsRecField { hsRecFieldArg = arg } <- fld

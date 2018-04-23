@@ -856,7 +856,7 @@ instance (p ~ GhcPass pass, OutputableBndrId p)
 -- declarations
 -- | Haskell Constructor Details
 data HsConDetails tyarg arg rec
-  = PrefixCon [tyarg] [arg]     -- C @x @y p1 p2 p3
+  = PrefixCon [tyarg] [arg]     -- C @x @y p1 p2 p3 
   | RecCon    rec               -- C { x = p1, y = p2 }
   | InfixCon  arg arg           -- p1 `C` p2
   deriving Data
@@ -864,7 +864,7 @@ data HsConDetails tyarg arg rec
 instance (Outputable arg, Outputable rec)
          => Outputable (HsConDetails tyarg arg rec) where
   ppr (PrefixCon [] args) = text "PrefixCon" <+> ppr args
-  ppr (PrefixCon _ _) = error "output instance prefix con"
+  ppr (PrefixCon  _ _) = error "output instance prefix con"
   ppr (RecCon rec)     = text "RecCon:" <+> ppr rec
   ppr (InfixCon l r)   = text "InfixCon:" <+> ppr [l, r]
 

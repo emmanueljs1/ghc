@@ -335,7 +335,7 @@ type instance XXPat   (GhcPass _) = PlaceHolder
 
 
 -- | Haskell Constructor Pattern Details
-type HsConPatDetails p = HsConDetails (LHsSigWcType p) (LPat p) (HsRecFields p (LPat p))
+type HsConPatDetails p = HsConDetails (XAppTypeE p) (LPat p) (HsRecFields p (LPat p))
 
 hsConPatArgs :: HsConPatDetails p -> [LPat p]
 hsConPatArgs (PrefixCon _ ps)   = ps

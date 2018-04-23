@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fdefer-type-errors #-} -- EMMA TODO: remove!
 {-# LANGUAGE CPP, TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
 
@@ -1546,7 +1547,8 @@ rep_bind (L loc (PatSynBind _ (PSB { psb_id   = syn
     -- their pattern-only bound right hand sides have different names,
     -- we want to treat them the same in TH. This is the reason why we
     -- need an adjusted mkGenArgSyms in the `RecCon` case below.
-    mkGenArgSyms (PrefixCon args)     = mkGenSyms (map unLoc args)
+    mkGenArgSyms (PrefixCon [] args)     = mkGenSyms (map unLoc args)
+    mkGenArgSyms (PrefixCon _ _) = error "tyvars binding prefix con case of mkGenSyms (DsMeta.hs)"
     mkGenArgSyms (InfixCon arg1 arg2) = mkGenSyms [unLoc arg1, unLoc arg2]
     mkGenArgSyms (RecCon fields)
       = do { let pats = map (unLoc . recordPatSynPatVar) fields
@@ -1575,9 +1577,11 @@ repPatSynD (MkC syn) (MkC args) (MkC dir) (MkC pat)
   = rep2 patSynDName [syn, args, dir, pat]
 
 repPatSynArgs :: HsPatSynDetails (Located Name) -> DsM (Core TH.PatSynArgsQ)
-repPatSynArgs (PrefixCon args)
+repPatSynArgs (PrefixCon [] args)
   = do { args' <- repList nameTyConName lookupLOcc args
        ; repPrefixPatSynArgs args' }
+repPatSynArgs (PrefixCon _ _)
+  = error "prefix con tyvar binding case of repPrefixPatSynArgs (DsMeta.hs)"
 repPatSynArgs (InfixCon arg1 arg2)
   = do { arg1' <- lookupLOcc arg1
        ; arg2' <- lookupLOcc arg2
@@ -1680,7 +1684,8 @@ repP (SumPat _ p alt arity) = do { p1 <- repLP p
 repP (ConPatIn dc details)
  = do { con_str <- lookupLOcc dc
       ; case details of
-         PrefixCon ps -> do { qs <- repLPs ps; repPcon con_str qs }
+         PrefixCon [] ps -> do { qs <- repLPs ps; repPcon con_str qs }
+         PrefixCon _ _ -> error "repP: prefix con tyvar binding case (DsMeta.hs)"
          RecCon rec   -> do { fps <- repList fieldPatQTyConName rep_fld (rec_flds rec)
                             ; repPrec con_str fps }
          InfixCon p1 p2 -> do { p1' <- repLP p1;
@@ -2227,15 +2232,16 @@ repConstr :: HsConDeclDetails GhcRn
           -> Maybe (LHsType GhcRn)
           -> [Core TH.Name]
           -> DsM (Core TH.ConQ)
-repConstr (PrefixCon ps) Nothing [con]
+repConstr (PrefixCon [] ps) Nothing [con]
     = do arg_tys  <- repList bangTypeQTyConName repBangTy ps
          rep2 normalCName [unC con, unC arg_tys]
 
-repConstr (PrefixCon ps) (Just (L _ res_ty)) cons
+repConstr (PrefixCon [] ps) (Just (L _ res_ty)) cons
     = do arg_tys     <- repList bangTypeQTyConName repBangTy ps
          res_ty' <- repTy res_ty
          rep2 gadtCName [ unC (nonEmptyCoreList cons), unC arg_tys, unC res_ty']
-
+repConstr (PrefixCon _ _) _ _
+    = error "repConstr: prefix con tyargs binding case (DsMeta.hs)"
 repConstr (RecCon (L _ ips)) resTy cons
     = do args     <- concatMapM rep_ip ips
          arg_vtys <- coreList varBangTypeQTyConName args

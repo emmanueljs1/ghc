@@ -507,7 +507,7 @@ splitCon ty
      return (data_con, mk_rest ts, trailing_doc)
    split [ L l (HsTupleTy _ HsBoxedOrConstraintTuple ts) ] []
      = return ( L l (getRdrName (tupleDataCon Boxed (length ts)))
-              , PrefixCon ts
+              , PrefixCon [] ts -- EMMA TODO: double check if correct
               , trailing_doc
               )
    split [ L l _ ] _ = parseErrorSDoc l (text msg <+> ppr ty)
@@ -517,7 +517,7 @@ splitCon ty
 
    mk_rest [L _ (HsDocTy _ t@(L _ HsRecTy{}) _)] = mk_rest [t]
    mk_rest [L l (HsRecTy _ flds)] = RecCon (L l flds)
-   mk_rest ts                     = PrefixCon ts
+   mk_rest ts                     = PrefixCon [] ts -- EMMA TODO: double check if correct
 
 tyConToDataCon :: SrcSpan -> RdrName -> P (Located RdrName)
 -- See Note [Parsing data constructors is hard]
@@ -568,11 +568,11 @@ mkPatSynMatchGroup (L loc patsyn_name) (L _ decls) =
         do { unless (name == patsyn_name) $
                wrongNameBindingErr loc decl
            ; match <- case details of
-               PrefixCon pats -> return $ Match { m_ctxt = ctxt, m_pats = pats
+               PrefixCon [] pats -> return $ Match { m_ctxt = ctxt, m_pats = pats
                                                 , m_grhss = rhs }
                    where
                      ctxt = FunRhs { mc_fun = ln, mc_fixity = Prefix, mc_strictness = NoSrcStrict }
-
+               PrefixCon _ _ -> error "prefix con tyvar binding case of fromDecl (RdrHsSyn.hs)"
                InfixCon p1 p2 -> return $ Match { m_ctxt = ctxt, m_pats = [p1, p2]
                                                 , m_grhss = rhs }
                    where
@@ -641,7 +641,7 @@ mkGadtDecl names ty
     split_tau (L _ (HsFunTy _ (L loc (HsRecTy _ rf)) res_ty))
                                    = (RecCon (L loc rf), res_ty)
     split_tau (L _ (HsParTy _ ty)) = split_tau ty
-    split_tau tau                  = (PrefixCon [], tau)
+    split_tau tau                  = (PrefixCon [] [], tau) -- EMMA TODO: double check if correct
 
 setRdrNameSpace :: RdrName -> NameSpace -> RdrName
 -- ^ This rather gruesome function is used mainly by the parser.
@@ -928,15 +928,10 @@ checkPatterns msg es = mapM (checkPattern msg) es
 checkLPat :: SDoc -> LHsExpr GhcPs -> P (LPat GhcPs)
 checkLPat msg e@(L l _) = checkPat msg l e [] []
 
-checkPat :: SDoc -> SrcSpan -> LHsExpr GhcPs -> [LPat GhcPs] -> [LPat GhcPs]
+checkPat :: SDoc -> SrcSpan -> LHsExpr GhcPs -> [XAppTypeE GhcPs] -> [LPat GhcPs]
          -> P (LPat GhcPs)
-<<<<<<< HEAD
-checkPat _ loc (L l e@(HsVar (L _ c))) tyargs args
+checkPat _ loc (L l e@(HsVar _ (L _ c))) tyargs args
   | isRdrDataCon c = return (L loc (ConPatIn (L l c) (PrefixCon tyargs args)))
-=======
-checkPat _ loc (L l e@(HsVar _ (L _ c))) args
-  | isRdrDataCon c = return (L loc (ConPatIn (L l c) (PrefixCon args)))
->>>>>>> 5d76846405240c051b00cddcda9d8d02c880968e
   | not (null args) && patIsRec c =
       patFail (text "Perhaps you intended to use RecursiveDo") l e
 checkPat msg loc e tyargs args -- OK to let this happen even if bang-patterns
@@ -944,17 +939,12 @@ checkPat msg loc e tyargs args -- OK to let this happen even if bang-patterns
                                -- non-bang-pattern parse of (C ! e)
   | Just (e', args') <- splitBang e
   = do  { args'' <- checkPatterns msg args'
-<<<<<<< HEAD
         ; checkPat msg loc e' tyargs (args'' ++ args) }
-checkPat msg loc (L _ (HsApp f e)) tyargs args
-=======
-        ; checkPat msg loc e' (args'' ++ args) }
-checkPat msg loc (L _ (HsApp _ f e)) args
->>>>>>> 5d76846405240c051b00cddcda9d8d02c880968e
+checkPat msg loc (L _ (HsApp _ f e)) tyargs args
   = do p <- checkLPat msg e
        checkPat msg loc f tyargs (p : args)
-checkPat msg loc (L l e@(HsAppType e1 e2)) tyargs args
-  = checkPat msg loc e1 (e2 : tyargs) args
+checkPat msg loc (L _ (HsAppType e1 e2)) tyargs args
+  = checkPat msg loc e2 (e1 : tyargs) args
 checkPat msg loc (L _ e) [] []
   = do p <- checkAPat msg loc e
        return (L loc p)

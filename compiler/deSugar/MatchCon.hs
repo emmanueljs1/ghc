@@ -6,6 +6,7 @@
 Pattern-matching constructors
 -}
 
+{-# OPTIONS_GHC -fdefer-type-errors #-} -- EMMA TODO: remove!
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -130,7 +131,7 @@ matchOneConLike vars ty (eqn1 : eqns)   -- All eqns for a single constructor
         -- and returns the types of the *value* args, which is what we want
 
               match_group :: [Id]
-                          -> [(ConArgPats, EquationInfo)] -> DsM MatchResult
+                          -> [(ConArgPats (), EquationInfo)] -> DsM MatchResult -- EMMA TODO: fix ConPatArgs type
               -- All members of the group have compatible ConArgPats
               match_group arg_vars arg_eqn_prs
                 = ASSERT( notNull arg_eqn_prs )
@@ -155,7 +156,7 @@ matchOneConLike vars ty (eqn1 : eqns)   -- All eqns for a single constructor
                 -- suggestions for the new variables
 
         -- Divide into sub-groups; see Note [Record patterns]
-        ; let groups :: [[(ConArgPats, EquationInfo)]]
+        ; let groups :: [[(ConArgPats (), EquationInfo)]] -- EMMA TODO: replace () with something correct
               groups = groupBy compatible_pats [ (pat_args (firstPat eqn), eqn)
                                                | eqn <- eqn1:eqns ]
 
@@ -175,7 +176,7 @@ matchOneConLike vars ty (eqn1 : eqns)   -- All eqns for a single constructor
 
     -- Choose the right arg_vars in the right order for this group
     -- Note [Record patterns]
-    select_arg_vars :: [Id] -> [(ConArgPats, EquationInfo)] -> [Id]
+    select_arg_vars :: [Id] -> [(ConArgPats (), EquationInfo)] -> [Id] -- EMMA TODO: Fix
     select_arg_vars arg_vars ((arg_pats, _) : _)
       | RecCon flds <- arg_pats
       , let rpats = rec_flds flds
@@ -193,7 +194,7 @@ matchOneConLike vars ty (eqn1 : eqns)   -- All eqns for a single constructor
 matchOneConLike _ _ [] = panic "matchOneCon []"
 
 -----------------
-compatible_pats :: (ConArgPats,a) -> (ConArgPats,a) -> Bool
+compatible_pats :: (ConArgPats (),a) -> (ConArgPats (),a) -> Bool -- EMMA TODO: fix this
 -- Two constructors have compatible argument patterns if the number
 -- and order of sub-matches is the same in both cases
 compatible_pats (RecCon flds1, _) (RecCon flds2, _) = same_fields flds1 flds2
@@ -210,17 +211,19 @@ same_fields flds1 flds2
 
 
 -----------------
-selectConMatchVars :: [Type] -> ConArgPats -> DsM [Id]
+selectConMatchVars :: [Type] -> ConArgPats () -> DsM [Id] -- EMMA TODO: fix this
 selectConMatchVars arg_tys (RecCon {})      = newSysLocalsDsNoLP arg_tys
-selectConMatchVars _       (PrefixCon ps)   = selectMatchVars (map unLoc ps)
+selectConMatchVars _       (PrefixCon [] ps)   = selectMatchVars (map unLoc ps)
+selectConMatchVars _       (PrefixCon _ _) = error "selectConMatchVars: prefix con tyvar binding case"
 selectConMatchVars _       (InfixCon p1 p2) = selectMatchVars [unLoc p1, unLoc p2]
 
 conArgPats :: [Type]      -- Instantiated argument types
                           -- Used only to fill in the types of WildPats, which
                           -- are probably never looked at anyway
-           -> ConArgPats
+           -> ConArgPats () -- EMMA TODO: fix
            -> [Pat GhcTc]
-conArgPats _arg_tys (PrefixCon ps)   = map unLoc ps
+conArgPats _arg_tys (PrefixCon [] ps)   = map unLoc ps
+conArgPats _ (PrefixCon _ _)   = error "conArgPats: prefix con tyvars binding case"
 conArgPats _arg_tys (InfixCon p1 p2) = [unLoc p1, unLoc p2]
 conArgPats  arg_tys (RecCon (HsRecFields { rec_flds = rpats }))
   | null rpats = map WildPat arg_tys
