@@ -1696,7 +1696,7 @@ simplIdF env var cont
 
 completeCall :: SimplEnv -> OutId -> SimplCont -> SimplM (SimplFloats, OutExpr)
 completeCall env var cont
-  | Just expr <- callSiteInline dflags var unfolding
+  | Just expr <- callSiteInline dflags var active_unf
                                 lone_variable arg_infos interesting_cont
   -- Inline the variable's RHS
   = do { checkedTick (UnfoldingDone var)
@@ -1715,7 +1715,7 @@ completeCall env var cont
     (lone_variable, arg_infos, call_cont) = contArgs cont
     n_val_args       = length arg_infos
     interesting_cont = interestingCallContext env call_cont
-    unfolding        = activeUnfolding (getMode env) var
+    active_unf       = activeUnfolding (getMode env) var
 
     dump_inline unfolding cont
       | not (dopt Opt_D_dump_inlinings dflags) = return ()
@@ -3292,7 +3292,7 @@ simplLetUnfolding env top_lvl cont_mb id new_rhs rhs_ty unf
   | isStableUnfolding unf
   = simplStableUnfolding env top_lvl cont_mb id unf rhs_ty
   | isExitJoinId id
-  = return noUnfolding -- see Note [Do not inline exit join points]
+  = return noUnfolding -- See Note [Do not inline exit join points] in Exitify
   | otherwise
   = mkLetUnfolding (seDynFlags env) top_lvl InlineRhs id new_rhs
 

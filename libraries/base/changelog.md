@@ -3,6 +3,9 @@
 ## 4.12.0.0 *TBA*
   * Bundled with GHC *TBA*
 
+  * Add a new module `GHC.ResponseFile` (previously defined in the `haddock`
+    package). (#13896)
+
   * Move the module `Data.Functor.Contravariant` from the
     `contravariant` package to `base`.
 
@@ -10,6 +13,9 @@
 
   * Add `Applicative` (for `K1`), `Semigroup` and `Monoid` instances in
     `GHC.Generics`. (#14849)
+
+  * `asinh` for `Float` and `Double` is now numerical stable in the face of
+    large negative arguments (#14927)
 
 ## 4.11.1.0 *TBA*
   * Bundled with GHC 8.4.2
