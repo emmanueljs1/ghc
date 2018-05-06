@@ -67,6 +67,7 @@ import DynFlags( gopt, GeneralFlag(..) )
 import Maybes
 -- libraries:
 import Data.Data hiding (TyCon,Fixity)
+import Data.Either ( rights )
 
 type InPat p  = LPat p        -- No 'Out' constructors
 type OutPat p = LPat p        -- No 'In' constructors
@@ -338,7 +339,7 @@ type instance XXPat   (GhcPass _) = PlaceHolder
 type HsConPatDetails p = HsConDetails (XAppTypeE p) (LPat p) (HsRecFields p (LPat p))
 
 hsConPatArgs :: HsConPatDetails p -> [LPat p]
-hsConPatArgs (PrefixCon _ ps)   = ps
+hsConPatArgs (PrefixCon ps) = rights ps -- TODO: also give lefts
 hsConPatArgs (RecCon fs)      = map (hsRecFieldArg . unLoc) (rec_flds fs)
 hsConPatArgs (InfixCon p1 p2) = [p1,p2]
 
@@ -556,8 +557,7 @@ pprUserCon c details          = pprPrefixOcc c <+> pprConArgs details
 
 pprConArgs :: (OutputableBndrId (GhcPass p))
            => HsConPatDetails (GhcPass p) -> SDoc
-pprConArgs (PrefixCon [] pats) = sep (map pprParendLPat pats)
-pprConArgs (PrefixCon _ _) = error "TODO: pretty print con args existential bind"
+pprConArgs (PrefixCon pats) = sep (map pprParendLPat (rights pats)) -- TODO: print lefts!
 pprConArgs (InfixCon p1 p2) = sep [pprParendLPat p1, pprParendLPat p2]
 pprConArgs (RecCon rpats)   = ppr rpats
 
@@ -589,7 +589,7 @@ mkPrefixConPat :: DataCon -> [OutPat p] -> [Type] -> OutPat p
 -- Make a vanilla Prefix constructor pattern
 mkPrefixConPat dc pats tys
   = noLoc $ ConPatOut { pat_con = noLoc (RealDataCon dc), pat_tvs = [], pat_dicts = [],
-                        pat_binds = emptyTcEvBinds, pat_args = PrefixCon [] pats,
+                        pat_binds = emptyTcEvBinds, pat_args = PrefixCon (map Right pats),
                         pat_arg_tys = tys, pat_wrap = idHsWrapper }
 
 mkNilPat :: Type -> OutPat p
@@ -801,7 +801,7 @@ isCompoundPat (XPat {})            = False -- Assumption
 -- /argument/ position. In other words, @'conPatNeedsParens' x@ implies
 -- @'isCompoundConPat' x@, but not necessarily the other way around.
 isCompoundConPat :: HsConDetails t a b -> Bool
-isCompoundConPat (PrefixCon tyargs args) = not (null tyargs) || not (null args)
+isCompoundConPat (PrefixCon args) = not (null args)
 isCompoundConPat (InfixCon {})    = True
 isCompoundConPat (RecCon {})      = False
 

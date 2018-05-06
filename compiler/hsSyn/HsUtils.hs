@@ -444,19 +444,19 @@ nlInfixConPat con l r = noLoc (ConPatIn (noLoc con) (InfixCon l r))
 
 nlConPat :: RdrName -> [LPat GhcPs] -> LPat GhcPs
 nlConPat con pats =
-  noLoc (ConPatIn (noLoc con) (PrefixCon [] (map parenthesizeCompoundPat pats)))
+  noLoc (ConPatIn (noLoc con) (PrefixCon (map (Right . parenthesizeCompoundPat) pats)))
 
 nlConPatName :: Name -> [LPat GhcRn] -> LPat GhcRn
 nlConPatName con pats =
-  noLoc (ConPatIn (noLoc con) (PrefixCon [] (map parenthesizeCompoundPat pats)))
+  noLoc (ConPatIn (noLoc con) (PrefixCon (map (Right . parenthesizeCompoundPat) pats)))
 
 nlNullaryConPat :: IdP id -> LPat id
-nlNullaryConPat con = noLoc (ConPatIn (noLoc con) (PrefixCon [] []))
+nlNullaryConPat con = noLoc (ConPatIn (noLoc con) (PrefixCon []))
 
 nlWildConPat :: DataCon -> LPat GhcPs
 nlWildConPat con = noLoc (ConPatIn (noLoc (getRdrName con))
-                         (PrefixCon [] (nOfThem (dataConSourceArity con)
-                                             nlWildPat)))
+                         (PrefixCon (map Right (nOfThem (dataConSourceArity con)
+                                             nlWildPat))))
 
 nlWildPat :: LPat GhcPs
 nlWildPat  = noLoc (WildPat noExt )  -- Pre-typechecking
@@ -1335,8 +1335,7 @@ lPatImplicits = hs_lpat
 
     hs_pat _ = emptyNameSet
 
-    details (PrefixCon [] ps)   = hs_lpats ps
-    details (PrefixCon _ _)  = error "details case w/ tyargs not handled" -- EMMA TODO
+    details (PrefixCon ps)   = hs_lpats (rights ps) -- EMMA TODO: details of lefts
     details (RecCon fs)      = hs_lpats explicit `unionNameSet` mkNameSet (collectPatsBinders implicit)
       where (explicit, implicit) = partitionEithers [if pat_explicit then Left pat else Right pat
                                                     | (i, fld) <- [0..] `zip` rec_flds fs

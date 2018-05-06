@@ -928,10 +928,10 @@ checkPatterns msg es = mapM (checkPattern msg) es
 checkLPat :: SDoc -> LHsExpr GhcPs -> P (LPat GhcPs)
 checkLPat msg e@(L l _) = checkPat msg l e [] []
 
-checkPat :: SDoc -> SrcSpan -> LHsExpr GhcPs -> [XAppTypeE GhcPs] -> [LPat GhcPs]
+checkPat :: SDoc -> SrcSpan -> LHsExpr GhcPs -> [Either (XAppTypeE GhcPs) (LPat GhcPs)]
          -> P (LPat GhcPs)
-checkPat _ loc (L l e@(HsVar _ (L _ c))) tyargs args
-  | isRdrDataCon c = return (L loc (ConPatIn (L l c) (PrefixCon tyargs args)))
+checkPat _ loc (L l e@(HsVar _ (L _ c))) args
+  | isRdrDataCon c = return (L loc (ConPatIn (L l c) (PrefixCon args)))
   | not (null args) && patIsRec c =
       patFail (text "Perhaps you intended to use RecursiveDo") l e
 checkPat msg loc e tyargs args -- OK to let this happen even if bang-patterns
@@ -942,9 +942,9 @@ checkPat msg loc e tyargs args -- OK to let this happen even if bang-patterns
         ; checkPat msg loc e' tyargs (args'' ++ args) }
 checkPat msg loc (L _ (HsApp _ f e)) tyargs args
   = do p <- checkLPat msg e
-       checkPat msg loc f tyargs (p : args)
-checkPat msg loc (L _ (HsAppType e1 e2)) tyargs args
-  = checkPat msg loc e2 (e1 : tyargs) args
+       checkPat msg loc f tyargs ((Right p) : args)
+checkPat msg loc (L _ (HsAppType e1 e2)) args
+  = checkPat msg loc e2 ((Left e1) : args)
 checkPat msg loc (L _ e) [] []
   = do p <- checkAPat msg loc e
        return (L loc p)

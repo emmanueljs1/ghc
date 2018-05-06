@@ -784,8 +784,7 @@ instance (idR ~ GhcPass pr,OutputableBndrId idL, OutputableBndrId idR,
 
       ppr_details = case details of
           InfixCon v1 v2 -> hsep [ppr v1, pprInfixOcc psyn, ppr v2]
-          PrefixCon [] vs   -> hsep (pprPrefixOcc psyn : map ppr vs)
-          PrefixCon _ _ -> error "ppr source text x existentials not done (emma)"
+          PrefixCon vs   -> hsep (pprPrefixOcc psyn : map ppr vs)
           RecCon vs      -> pprPrefixOcc psyn
                             <> braces (sep (punctuate comma (map ppr vs)))
 

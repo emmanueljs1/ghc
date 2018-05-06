@@ -128,7 +128,7 @@ rn_hs_sig_wc_type always_bind_free_tvs ctxt
        ; rnImplicitBndrs bind_free_tvs tv_rdrs $ \ vars ->
     do { (wcs, hs_ty', fvs1) <- rnWcBody ctxt nwc_rdrs hs_ty
        ; let sig_ty' = HsWC { hswc_wcs = wcs, hswc_body = ib_ty' }
-             ib_ty'  = mk_implicit_bndrs vars hs_ty' fvs1
+             ib_ty'  = mk_implicit_bndrs vars hs_ty' fvs1 -- ib = implicit binder
        ; (res, fvs2) <- thing_inside sig_ty'
        ; return (res, fvs1 `plusFV` fvs2) } }
 

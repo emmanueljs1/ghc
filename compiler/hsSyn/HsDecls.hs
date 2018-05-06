@@ -113,6 +113,7 @@ import SrcLoc
 import Bag
 import Maybes
 import Data.Data        hiding (TyCon,Fixity, Infix)
+import Data.Either ( rights )
 
 {-
 ************************************************************************
@@ -1215,7 +1216,7 @@ There's a wrinkle in ConDeclGADT
 
 -- | Haskell data Constructor Declaration Details
 type HsConDeclDetails pass
-   = HsConDetails () (LBangType pass) (Located [LConDeclField pass]) -- EMMA TODO: double check
+   = HsConDetails () (LBangType pass) (Located [LConDeclField pass])
 
 getConNames :: ConDecl pass -> [Located (IdP pass)]
 getConNames ConDeclH98  {con_name  = name}  = [name]
@@ -1225,7 +1226,7 @@ getConArgs :: ConDecl pass -> HsConDeclDetails pass
 getConArgs d = con_args d
 
 hsConDeclArgTys :: HsConDeclDetails pass -> [LBangType pass]
-hsConDeclArgTys (PrefixCon _ tys)    = tys
+hsConDeclArgTys (PrefixCon tys)    = rights tys
 hsConDeclArgTys (InfixCon ty1 ty2) = [ty1,ty2]
 hsConDeclArgTys (RecCon flds)      = map (cd_fld_type . unLoc) (unLoc flds)
 
@@ -1283,8 +1284,8 @@ pprConDecl (ConDeclH98 { con_name = L _ con
   = sep [ppr_mbDoc doc, pprHsForAll ex_tvs cxt, ppr_details args]
   where
     ppr_details (InfixCon t1 t2) = hsep [ppr t1, pprInfixOcc con, ppr t2]
-    ppr_details (PrefixCon _ tys)  = hsep (pprPrefixOcc con
-                                   : map (pprHsType . unLoc) tys)
+    ppr_details (PrefixCon tys)  = hsep (pprPrefixOcc con
+                                   : map (pprHsType . unLoc) (rights tys))
     ppr_details (RecCon fields)  = pprPrefixOcc con
                                  <+> pprConDeclFields (unLoc fields)
     cxt = fromMaybe (noLoc []) mcxt
@@ -1294,10 +1295,9 @@ pprConDecl (ConDeclGADT { con_names = cons, con_qvars = qvars
                         , con_res_ty = res_ty, con_doc = doc })
   = ppr_mbDoc doc <+> ppr_con_names cons <+> dcolon
     <+> (sep [pprHsForAll (hsq_explicit qvars) cxt,
-              ppr_arrow_chain (get_args args ++ [ppr res_ty]) ]) 
+              ppr_arrow_chain (get_args args ++ [ppr res_ty]) ])
   where
-    get_args (PrefixCon [] args) = map ppr args
-    get_args (PrefixCon _ _) = error "pretty printing existentials binding"
+    get_args (PrefixCon args) = map ppr (rights args)
     get_args (RecCon fields)  = [pprConDeclFields (unLoc fields)]
     get_args (InfixCon {})    = pprPanic "pprConDecl:GADT" (ppr cons)
 

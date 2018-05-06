@@ -518,7 +518,7 @@ rnConPatAndThen :: NameMaker
                 -> HsConPatDetails GhcPs -- TODO: must add a type here
                 -> CpsRn (Pat GhcRn)
 
-rnConPatAndThen mk con (PrefixCon pats)
+rnConPatAndThen mk con (PrefixCon [] pats)
   = do  { con' <- lookupConCps con
         ; pats' <- rnLPatsAndThen mk pats
         ; return (ConPatIn con' (PrefixCon pats')) }

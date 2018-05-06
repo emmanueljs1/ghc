@@ -78,6 +78,7 @@ import CoreSyn
 import Control.Monad
 import Data.List  ( partition )
 import Control.Arrow ( second )
+import Data.Either ( rights )
 
 {-
 ************************************************************************
@@ -552,8 +553,8 @@ zonk_bind _ (XHsBindsLR _)                 = panic "zonk_bind"
 zonkPatSynDetails :: ZonkEnv
                   -> HsPatSynDetails (Located TcId)
                   -> HsPatSynDetails (Located Id)
-zonkPatSynDetails env (PrefixCon [] as) -- EMMA TODO: update!
-  = PrefixCon (map (zonkLIdOcc env) as)
+zonkPatSynDetails env (PrefixCon as) -- EMMA TODO: update!
+  = PrefixCon (map (Right . zonkLIdOcc env) (rights as)) -- EMMA TODO: update!
 zonkPatSynDetails env (InfixCon a1 a2)
   = InfixCon (zonkLIdOcc env a1) (zonkLIdOcc env a2)
 zonkPatSynDetails env (RecCon flds)
@@ -1350,12 +1351,12 @@ zonk_pat _ pat = pprPanic "zonk_pat" (ppr pat)
 
 ---------------------------
 zonkConStuff :: ZonkEnv
-             -> HsConDetails () (OutPat GhcTcId) (HsRecFields id (OutPat GhcTcId)) -- EMMA TODO: definitely fix!
+             -> HsConDetails (XAppTypeE GhcTcId) (OutPat GhcTcId) (HsRecFields id (OutPat GhcTcId)) -- EMMA TODO: definitely fix!
              -> TcM (ZonkEnv,
-                    HsConDetails () (OutPat GhcTc) (HsRecFields id (OutPat GhcTc)))
-zonkConStuff env (PrefixCon _ pats) -- EMMA TODO: fix case analysis
-  = do  { (env', pats') <- zonkPats env pats
-        ; return (env', PrefixCon [] pats') } -- EMMA TODO: fix as well!
+                    HsConDetails (XAppTypeE GhcTcId) (OutPat GhcTc) (HsRecFields id (OutPat GhcTc)))
+zonkConStuff env (PrefixCon pats) -- EMMA TODO: fix case analysis
+  = do  { (env', pats') <- zonkPats env (rights pats) -- EMMA TODO: this is all wrong!
+        ; return (env', PrefixCon $ map Right pats') } -- EMMA TODO: fix as well!
 
 zonkConStuff env (InfixCon p1 p2)
   = do  { (env1, p1') <- zonkPat env  p1

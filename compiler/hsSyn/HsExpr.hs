@@ -336,7 +336,6 @@ data HsExpr p
   | HsApp     (XApp p) (LHsExpr p) (LHsExpr p) -- ^ Application
 
   | HsAppType (XAppTypeE p) (LHsExpr p)  -- ^ Visible type application
-       --
        -- Explicit type argument; e.g  f @Int x y
        -- NB: Has wildcards, but no implicit quantification
        --
