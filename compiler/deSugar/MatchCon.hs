@@ -34,6 +34,7 @@ import DynFlags
 import Outputable
 import Control.Monad(liftM)
 import Data.List (groupBy)
+import Data.Either ( rights )
 
 {-
 We are confronted with the first column of patterns in a set of
@@ -211,19 +212,17 @@ same_fields flds1 flds2
 
 
 -----------------
-selectConMatchVars :: [Type] -> ConArgPats () -> DsM [Id] -- EMMA TODO: fix this
+selectConMatchVars :: [Type] -> ConArgPats () -> DsM [Id] -- EMMA TODO: fix type (& deal w prefixcon lefts)
 selectConMatchVars arg_tys (RecCon {})      = newSysLocalsDsNoLP arg_tys
-selectConMatchVars _       (PrefixCon [] ps)   = selectMatchVars (map unLoc ps)
-selectConMatchVars _       (PrefixCon _ _) = error "selectConMatchVars: prefix con tyvar binding case"
+selectConMatchVars _       (PrefixCon ps)   = selectMatchVars (map unLoc $ rights ps)
 selectConMatchVars _       (InfixCon p1 p2) = selectMatchVars [unLoc p1, unLoc p2]
 
 conArgPats :: [Type]      -- Instantiated argument types
                           -- Used only to fill in the types of WildPats, which
                           -- are probably never looked at anyway
-           -> ConArgPats () -- EMMA TODO: fix
+           -> ConArgPats () -- EMMA TODO: fix type (& deal w prefix con lefts)
            -> [Pat GhcTc]
-conArgPats _arg_tys (PrefixCon [] ps)   = map unLoc ps
-conArgPats _ (PrefixCon _ _)   = error "conArgPats: prefix con tyvars binding case"
+conArgPats _arg_tys (PrefixCon ps)   = map unLoc $ rights ps
 conArgPats _arg_tys (InfixCon p1 p2) = [unLoc p1, unLoc p2]
 conArgPats  arg_tys (RecCon (HsRecFields { rec_flds = rpats }))
   | null rpats = map WildPat arg_tys

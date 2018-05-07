@@ -964,18 +964,16 @@ Suppose (coi, tys) = matchExpectedConType data_tc pat_ty
 tcConArgs :: ConLike -> [TcSigmaType]
           -> Checker (HsConPatDetails GhcRn) (HsConPatDetails GhcTc)
 
-tcConArgs con_like arg_tys (PrefixCon [] arg_pats) penv thing_inside
+tcConArgs con_like arg_tys (PrefixCon arg_pats) penv thing_inside
   = do  { checkTc (con_arity == no_of_args)     -- Check correct arity
                   (arityErr (text "constructor") con_like con_arity no_of_args)
-        ; let pats_w_tys = zipEqual "tcConArgs" arg_pats arg_tys
+        ; let pats_w_tys = zipEqual "tcConArgs" (rights arg_pats) arg_tys
         ; (arg_pats', res) <- tcMultiple tcConArg pats_w_tys
                                               penv thing_inside
-        ; return (PrefixCon arg_pats', res) }
+        ; return (PrefixCon (map Right arg_pats'), res) } -- EMMA TODO: typecheck bound types
   where
     con_arity  = conLikeArity con_like
     no_of_args = length arg_pats
-tcConArgs _ _ (PrefixCon _ _) _ _
-  = error "prefix con tyvar binding case of tcConArgs (TcPat.hs)"
 tcConArgs con_like arg_tys (InfixCon p1 p2) penv thing_inside
   = do  { checkTc (con_arity == 2)      -- Check correct arity
                   (arityErr (text "constructor") con_like con_arity 2)
