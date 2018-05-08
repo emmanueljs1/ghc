@@ -112,7 +112,6 @@ import SrcLoc
 import Bag
 import Maybes
 import Data.Data        hiding (TyCon,Fixity, Infix)
-import Data.Either ( rights )
 
 {-
 ************************************************************************
@@ -1327,7 +1326,7 @@ getConArgs :: ConDecl pass -> HsConDeclDetails pass
 getConArgs d = con_args d
 
 hsConDeclArgTys :: HsConDeclDetails pass -> [LBangType pass]
-hsConDeclArgTys (PrefixCon tys)    = rights tys
+hsConDeclArgTys (PrefixCon tys)    = hsValArgs tys
 hsConDeclArgTys (InfixCon ty1 ty2) = [ty1,ty2]
 hsConDeclArgTys (RecCon flds)      = map (cd_fld_type . unLoc) (unLoc flds)
 
@@ -1387,7 +1386,7 @@ pprConDecl (ConDeclH98 { con_name = L _ con
   where
     ppr_details (InfixCon t1 t2) = hsep [ppr t1, pprInfixOcc con, ppr t2]
     ppr_details (PrefixCon tys)  = hsep (pprPrefixOcc con
-                                   : map (pprHsType . unLoc) (rights tys))
+                                   : map (pprHsType . unLoc) (hsValArgs tys))
     ppr_details (RecCon fields)  = pprPrefixOcc con
                                  <+> pprConDeclFields (unLoc fields)
     cxt = fromMaybe (noLoc []) mcxt
@@ -1399,7 +1398,7 @@ pprConDecl (ConDeclGADT { con_names = cons, con_qvars = qvars
     <+> (sep [pprHsForAll (hsq_explicit qvars) cxt,
               ppr_arrow_chain (get_args args ++ [ppr res_ty]) ])
   where
-    get_args (PrefixCon args) = map ppr (rights args)
+    get_args (PrefixCon args) = map ppr (hsValArgs args)
     get_args (RecCon fields)  = [pprConDeclFields (unLoc fields)]
     get_args (InfixCon {})    = pprPanic "pprConDecl:GADT" (ppr cons)
 

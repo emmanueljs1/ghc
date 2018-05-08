@@ -64,7 +64,6 @@ import IOEnv
 import qualified Data.Semigroup as Semi
 
 import ListT (ListT(..), fold, select)
-import Data.Either ( rights )
 
 {-
 This module checks pattern matches for:
@@ -885,8 +884,8 @@ translatePatVec fam_insts pats = mapM (translatePat fam_insts) pats
 -- | Translate a constructor pattern
 translateConPatVec :: FamInstEnvs -> [Type] -> [TyVar]
                    -> ConLike -> HsConPatDetails GhcTc -> DsM PatVec
-translateConPatVec fam_insts _univ_tys _ex_tvs _ (PrefixCon ps) -- EMMA TODO: double check what to do here
-  = concat <$> translatePatVec fam_insts (map unLoc (rights ps))
+translateConPatVec fam_insts _univ_tys _ex_tvs _ (PrefixCon ps) -- EMMA TODO: have to write extension code
+  = concat <$> translatePatVec fam_insts (map unLoc (hsValArgs ps))
 translateConPatVec fam_insts _univ_tys _ex_tvs _ (InfixCon p1 p2)
   = concat <$> translatePatVec fam_insts (map unLoc [p1,p2])
 translateConPatVec fam_insts  univ_tys  ex_tvs c (RecCon (HsRecFields fs _))

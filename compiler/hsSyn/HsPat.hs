@@ -67,7 +67,6 @@ import DynFlags( gopt, GeneralFlag(..) )
 import Maybes
 -- libraries:
 import Data.Data hiding (TyCon,Fixity)
-import Data.Either ( rights )
 
 type InPat p  = LPat p        -- No 'Out' constructors
 type OutPat p = LPat p        -- No 'In' constructors
@@ -344,7 +343,7 @@ type instance XXPat   (GhcPass _) = NoExt
 type HsConPatDetails p = HsConDetails (XAppTypeE p) (LPat p) (HsRecFields p (LPat p))
 
 hsConPatArgs :: HsConPatDetails p -> [LPat p]
-hsConPatArgs (PrefixCon ps) = rights ps -- TODO: also give lefts
+hsConPatArgs (PrefixCon ps) = hsValArgs ps -- EMMA TODO: also give tyargs?
 hsConPatArgs (RecCon fs)      = map (hsRecFieldArg . unLoc) (rec_flds fs)
 hsConPatArgs (InfixCon p1 p2) = [p1,p2]
 
@@ -560,9 +559,15 @@ pprUserCon :: (OutputableBndr con, OutputableBndrId (GhcPass p))
 pprUserCon c (InfixCon p1 p2) = ppr p1 <+> pprInfixOcc c <+> ppr p2
 pprUserCon c details          = pprPrefixOcc c <+> pprConArgs details
 
+
+pprHsArgPat :: (OutputableBndrId (GhcPass p), Outputable (XAppTypeE (GhcPass p))) =>
+  HsArg (LPat (GhcPass p)) (XAppTypeE (GhcPass p)) -> SDoc
+pprHsArgPat (HsValArg tm) = pprParendLPat tm
+pprHsArgPat (HsTypeArg ty) = char '@' <> ppr ty
+
 pprConArgs :: (OutputableBndrId (GhcPass p))
            => HsConPatDetails (GhcPass p) -> SDoc
-pprConArgs (PrefixCon pats) = sep (map pprParendLPat (rights pats)) -- TODO: print lefts!
+pprConArgs (PrefixCon pats) = sep (map pprHsArgPat pats)
 pprConArgs (InfixCon p1 p2) = sep [pprParendLPat p1, pprParendLPat p2]
 pprConArgs (RecCon rpats)   = ppr rpats
 
@@ -594,7 +599,7 @@ mkPrefixConPat :: DataCon -> [OutPat p] -> [Type] -> OutPat p
 -- Make a vanilla Prefix constructor pattern
 mkPrefixConPat dc pats tys
   = noLoc $ ConPatOut { pat_con = noLoc (RealDataCon dc), pat_tvs = [], pat_dicts = [],
-                        pat_binds = emptyTcEvBinds, pat_args = PrefixCon (map Right pats),
+                        pat_binds = emptyTcEvBinds, pat_args = PrefixCon (map HsValArg pats),
                         pat_arg_tys = tys, pat_wrap = idHsWrapper }
 
 mkNilPat :: Type -> OutPat p

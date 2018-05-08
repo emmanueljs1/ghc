@@ -55,7 +55,6 @@ import UniqDFM
 import Control.Monad( when, unless )
 import qualified Data.Map as Map
 import Data.List (groupBy)
-import Data.Either (rights)
 
 {-
 ************************************************************************
@@ -538,9 +537,10 @@ push_bang_into_newtype_arg :: SrcSpan
                            -> HsConPatDetails GhcTc -> HsConPatDetails GhcTc
 -- See Note [Bang patterns and newtypes]
 -- We are transforming   !(N p)   into   (N !p)
-push_bang_into_newtype_arg l _ty (PrefixCon (Right arg : args))
-  = ASSERT(null $ rights args)
-    PrefixCon [Right $ L l (BangPat noExt arg)]
+-- EMMA TODO: the below may be wrong
+push_bang_into_newtype_arg l _ty (PrefixCon (HsValArg arg : args))
+  = ASSERT(null $ hsValArgs args)
+    PrefixCon [HsValArg $ L l (BangPat noExt arg)]
 push_bang_into_newtype_arg l _ty (RecCon rf)
   | HsRecFields { rec_flds = L lf fld : flds } <- rf
   , HsRecField { hsRecFieldArg = arg } <- fld
@@ -549,7 +549,7 @@ push_bang_into_newtype_arg l _ty (RecCon rf)
                                            = L l (BangPat noExt arg) })] })
 push_bang_into_newtype_arg l ty (RecCon rf) -- If a user writes !(T {})
   | HsRecFields { rec_flds = [] } <- rf
-  = PrefixCon [Right $ L l (BangPat noExt (noLoc (WildPat ty)))]
+  = PrefixCon [HsValArg $ L l (BangPat noExt (noLoc (WildPat ty)))]
 push_bang_into_newtype_arg _ _ cd
   = pprPanic "push_bang_into_newtype_arg" (pprConArgs cd)
 

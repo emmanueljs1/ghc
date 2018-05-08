@@ -34,7 +34,6 @@ import DynFlags
 import Outputable
 import Control.Monad(liftM)
 import Data.List (groupBy)
-import Data.Either ( rights )
 
 {-
 We are confronted with the first column of patterns in a set of
@@ -214,7 +213,7 @@ same_fields flds1 flds2
 -----------------
 selectConMatchVars :: [Type] -> ConArgPats () -> DsM [Id] -- EMMA TODO: fix type (& deal w prefixcon lefts)
 selectConMatchVars arg_tys (RecCon {})      = newSysLocalsDsNoLP arg_tys
-selectConMatchVars _       (PrefixCon ps)   = selectMatchVars (map unLoc $ rights ps)
+selectConMatchVars _       (PrefixCon ps)   = selectMatchVars (map unLoc $ hsValArgs ps)
 selectConMatchVars _       (InfixCon p1 p2) = selectMatchVars [unLoc p1, unLoc p2]
 
 conArgPats :: [Type]      -- Instantiated argument types
@@ -222,7 +221,7 @@ conArgPats :: [Type]      -- Instantiated argument types
                           -- are probably never looked at anyway
            -> ConArgPats () -- EMMA TODO: fix type (& deal w prefix con lefts)
            -> [Pat GhcTc]
-conArgPats _arg_tys (PrefixCon ps)   = map unLoc $ rights ps
+conArgPats _arg_tys (PrefixCon ps)   = map unLoc $ hsValArgs ps
 conArgPats _arg_tys (InfixCon p1 p2) = [unLoc p1, unLoc p2]
 conArgPats  arg_tys (RecCon (HsRecFields { rec_flds = rpats }))
   | null rpats = map WildPat arg_tys

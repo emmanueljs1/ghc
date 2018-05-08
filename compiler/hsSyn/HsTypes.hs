@@ -37,7 +37,7 @@ module HsTypes (
 
         ConDeclField(..), LConDeclField, pprConDeclFields,
 
-        HsConDetails(..),
+        HsConDetails(..), HsArg(..), hsValArgs, hsTyArgs, isHsValArg,
 
         FieldOcc(..), LFieldOcc, mkFieldOcc,
         AmbiguousFieldOcc(..), mkAmbiguousFieldOcc,
@@ -888,16 +888,39 @@ instance (p ~ GhcPass pass, OutputableBndrId p)
   ppr (ConDeclField _ fld_n fld_ty _) = ppr fld_n <+> dcolon <+> ppr fld_ty
   ppr (XConDeclField x) = ppr x
 
+data HsArg tm ty
+  = HsValArg tm   -- Argument is an ordinary expression     (f arg)
+  | HsTypeArg  ty -- Argument is a visible type application (f @ty)
+  deriving Data
+
+instance (Outputable tm, Outputable ty) => Outputable (HsArg tm ty) where
+  ppr (HsValArg tm) = text "HsValArg" <+> ppr tm
+  ppr (HsTypeArg ty) = text "HsTypeArg" <+> ppr ty
+
+hsValArgs :: [HsArg a b] -> [a]
+hsValArgs (HsValArg arg : args) = arg : hsValArgs args
+hsValArgs (_ : args) = hsValArgs args
+hsValArgs [] = []
+
+hsTyArgs :: [HsArg a b] -> [b]
+hsTyArgs (HsTypeArg tyarg : args) = tyarg : hsTyArgs args
+hsTyArgs (_ : args) = hsTyArgs args
+hsTyArgs [] = []
+
+isHsValArg :: HsArg tm ty -> Bool
+isHsValArg (HsValArg {}) = True
+isHsValArg (HsTypeArg {}) = False
+
 -- HsConDetails is used for patterns/expressions *and* for data type
 -- declarations
 -- | Haskell Constructor Details
 data HsConDetails tyarg arg rec
-  = PrefixCon [Either tyarg arg]     -- C @x @y p1 p2 p3
+  = PrefixCon [HsArg arg tyarg]     -- C @x @y p1 p2 p3
   | RecCon    rec               -- C { x = p1, y = p2 }
   | InfixCon  arg arg           -- p1 `C` p2
   deriving Data
 
-instance (Outputable tyarg, Outputable arg, Outputable rec)
+instance (Outputable arg, Outputable tyarg, Outputable rec)
          => Outputable (HsConDetails tyarg arg rec) where
   ppr (PrefixCon args) = text "PrefixCon" <+> ppr args
   ppr (RecCon rec)     = text "RecCon:" <+> ppr rec

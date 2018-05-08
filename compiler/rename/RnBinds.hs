@@ -665,9 +665,10 @@ rnPatSynBind sig_fn bind@(PSB { psb_id = L l name
          -- from the left-hand side
             case details of
                PrefixCon vars ->
-                   do { checkDupRdrNames vars
-                      ; names <- mapM lookupPatSynBndr vars
-                      ; return ( (pat', PrefixCon names)
+                   do { let vars' = hsValArgs vars
+                      ; checkDupRdrNames vars' -- EMMA TODO: pattern synomyn stuff
+                      ; names <- mapM lookupPatSynBndr vars'
+                      ; return ( (pat', PrefixCon $ map HsValArg names)
                                , mkFVs (map unLoc names)) }
                InfixCon var1 var2 ->
                    do { checkDupRdrNames [var1, var2]

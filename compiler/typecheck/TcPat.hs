@@ -964,13 +964,16 @@ Suppose (coi, tys) = matchExpectedConType data_tc pat_ty
 tcConArgs :: ConLike -> [TcSigmaType]
           -> Checker (HsConPatDetails GhcRn) (HsConPatDetails GhcTc)
 
+-- EMMA TODO: this is all wrong,
+-- right now it is assuming
+-- that you can never bind
 tcConArgs con_like arg_tys (PrefixCon arg_pats) penv thing_inside
   = do  { checkTc (con_arity == no_of_args)     -- Check correct arity
                   (arityErr (text "constructor") con_like con_arity no_of_args)
-        ; let pats_w_tys = zipEqual "tcConArgs" (rights arg_pats) arg_tys
+        ; let pats_w_tys = zipEqual "tcConArgs" (hsValArgs arg_pats) arg_tys
         ; (arg_pats', res) <- tcMultiple tcConArg pats_w_tys
                                               penv thing_inside
-        ; return (PrefixCon (map Right arg_pats'), res) } -- EMMA TODO: typecheck bound types
+        ; return (PrefixCon (map HsValArg arg_pats'), res) }
   where
     con_arity  = conLikeArity con_like
     no_of_args = length arg_pats

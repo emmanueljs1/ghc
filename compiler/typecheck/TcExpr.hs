@@ -1132,14 +1132,6 @@ arithSeqEltType (Just fl) res_ty
 ************************************************************************
 -}
 
-data HsArg tm ty
-  = HsValArg tm   -- Argument is an ordinary expression     (f arg)
-  | HsTypeArg  ty -- Argument is a visible type application (f @ty)
-
-isHsValArg :: HsArg tm ty -> Bool
-isHsValArg (HsValArg {}) = True
-isHsValArg (HsTypeArg {}) = False
-
 type LHsExprArgIn  = HsArg (LHsExpr GhcRn)   (LHsWcType GhcRn)
 type LHsExprArgOut = HsArg (LHsExpr GhcTcId) (LHsWcType GhcRn)
 

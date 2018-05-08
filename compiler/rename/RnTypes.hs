@@ -11,7 +11,7 @@ module RnTypes (
         -- Type related stuff
         rnHsType, rnLHsType, rnLHsTypes, rnContext,
         rnHsKind, rnLHsKind,
-        rnHsSigType, rnHsWcType,
+        rnHsSigType, rnHsWcType, rnHsWcTypeBindExists,
         rnHsSigWcType, rnHsSigWcTypeScoped,
         rnLHsInstType,
         newTyVarNameRn, collectAnonWildCards,
@@ -128,13 +128,30 @@ rn_hs_sig_wc_type always_bind_free_tvs ctxt
        ; rnImplicitBndrs bind_free_tvs tv_rdrs $ \ vars ->
     do { (wcs, hs_ty', fvs1) <- rnWcBody ctxt nwc_rdrs hs_ty
        ; let sig_ty' = HsWC { hswc_ext = wcs, hswc_body = ib_ty' }
-             ib_ty'  = mk_implicit_bndrs vars hs_ty'  -- EMMA TODO: ib - implicit binder (not necessary for extension)
+             ib_ty'  = mk_implicit_bndrs vars hs_ty' fvs1
        ; (res, fvs2) <- thing_inside sig_ty'
        ; return (res, fvs1 `plusFV` fvs2) } }
 rn_hs_sig_wc_type _ _ (HsWC _ (XHsImplicitBndrs _)) _
   = panic "rn_hs_sig_wc_type"
 rn_hs_sig_wc_type _ _ (XHsWildCardBndrs _) _
   = panic "rn_hs_sig_wc_type"
+
+rnHsWcTypeBindExists :: HsDocContext
+                -> LHsWcType GhcPs
+                -> (LHsWcType GhcRn -> RnM (a, FreeVars))
+                -> RnM (a, FreeVars)
+rnHsWcTypeBindExists ctxt (HsWC {hswc_body = hs_ty }) thing_inside
+  = do { -- EMMA TODO: add check for if language extension is turned on
+        free_vars <- extractFilteredRdrTyVars hs_ty
+       ; (tv_rdrs, nwc_rdrs) <- partition_nwcs free_vars
+       ; rnImplicitBndrs True tv_rdrs $ \_ ->
+    do { (wcs, hs_ty', fvs1) <- rnWcBody ctxt nwc_rdrs hs_ty
+       ; let sig_ty' = HsWC { hswc_ext = wcs, hswc_body = hs_ty' }
+       -- EMMA TODO: do I need to make implicit binders?
+       ; (res, fvs2) <- thing_inside sig_ty'
+       ; return (res, fvs1 `plusFV` fvs2) } }
+rnHsWcTypeBindExists _ (XHsWildCardBndrs _) _
+  = panic "rnHsWcTypeBinds"
 
 rnHsWcType :: HsDocContext -> LHsWcType GhcPs -> RnM (LHsWcType GhcRn, FreeVars)
 rnHsWcType ctxt (HsWC { hswc_body = hs_ty })
@@ -144,6 +161,7 @@ rnHsWcType ctxt (HsWC { hswc_body = hs_ty })
        ; let sig_ty' = HsWC { hswc_ext = wcs, hswc_body = hs_ty' }
        ; return (sig_ty', fvs) }
 rnHsWcType _ (XHsWildCardBndrs _) = panic "rnHsWcType"
+-- call to rnImplicitBndrs
 
 rnWcBody :: HsDocContext -> [Located RdrName] -> LHsType GhcPs
          -> RnM ([Name], LHsType GhcRn, FreeVars)

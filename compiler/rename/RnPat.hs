@@ -220,6 +220,9 @@ matchNameMaker ctxt = LamMk report_unused
 rnHsSigCps :: LHsSigWcType GhcPs -> CpsRn (LHsSigWcType GhcRn)
 rnHsSigCps sig = CpsRn (rnHsSigWcTypeScoped PatCtx sig)
 
+rnHsWcCps :: LHsWcType GhcPs -> CpsRn (LHsWcType GhcRn)
+rnHsWcCps wc = CpsRn (rnHsWcTypeBindExists PatCtx wc)
+
 newPatLName :: NameMaker -> Located RdrName -> CpsRn (Located Name)
 newPatLName name_maker rdr_name@(L loc _)
   = do { name <- newPatName name_maker rdr_name
@@ -513,13 +516,16 @@ rnPatAndThen _ pat = pprPanic "rnLPatAndThen" (ppr pat)
 --------------------
 rnConPatAndThen :: NameMaker
                 -> Located RdrName    -- the constructor
-                -> HsConPatDetails GhcPs -- TODO: must add a type here
+                -> HsConPatDetails GhcPs
                 -> CpsRn (Pat GhcRn)
 
-rnConPatAndThen mk con (PrefixCon [] pats)
+rnConPatAndThen mk con (PrefixCon pats)
   = do  { con' <- lookupConCps con
-        ; pats' <- rnLPatsAndThen mk pats
+        ; pats' <- mapM (rnPrefixConPats mk) pats -- EMMA TODO: is this actually going in left-to-right order
         ; return (ConPatIn con' (PrefixCon pats')) }
+  where
+    rnPrefixConPats _ (HsTypeArg ty) = liftM HsTypeArg $ rnHsWcCps ty
+    rnPrefixConPats mk (HsValArg tm) = liftM HsValArg $ rnLPatAndThen mk tm
 
 rnConPatAndThen mk con (InfixCon pat1 pat2)
   = do  { con' <- lookupConCps con
