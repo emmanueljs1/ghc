@@ -1982,7 +1982,7 @@ rnConDecl decl@(ConDeclGADT { con_names   = names
                       PrefixCon as | (arg_tys, final_res_ty) <- splitHsFunType new_res_ty
                                    -> ASSERT( null as )
                                       -- See Note [GADT abstract syntax] in HsDecls
-                                      (PrefixCon arg_tys, final_res_ty)
+                                      (PrefixCon $ map HsValArg arg_tys, final_res_ty)
 
               new_qtvs =  HsQTvs { hsq_ext = HsQTvsRn
                                      { hsq_implicit  = implicit_tkvs
@@ -2008,12 +2008,12 @@ rnMbContext doc (Just cxt) = do { (ctx',fvs) <- rnContext doc cxt
 rnConDeclDetails
    :: Name
    -> HsDocContext
-   -> HsConDetails (LHsType GhcPs) (Located [LConDeclField GhcPs])
-   -> RnM (HsConDetails (LHsType GhcRn) (Located [LConDeclField GhcRn]),
+   -> HsConDetails () (LHsType GhcPs) (Located [LConDeclField GhcPs])
+   -> RnM (HsConDetails () (LHsType GhcRn) (Located [LConDeclField GhcRn]),
            FreeVars)
 rnConDeclDetails _ doc (PrefixCon tys)
-  = do { (new_tys, fvs) <- rnLHsTypes doc tys
-       ; return (PrefixCon new_tys, fvs) }
+  = do { (new_tys, fvs) <- rnLHsTypes doc $ hsValArgs tys
+       ; return (PrefixCon $ map HsValArg new_tys, fvs) }
 
 rnConDeclDetails _ doc (InfixCon ty1 ty2)
   = do { (new_ty1, fvs1) <- rnLHsType doc ty1

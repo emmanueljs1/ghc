@@ -3,7 +3,6 @@ Author: George Karachalias <george.karachalias@cs.kuleuven.be>
 
 Pattern Matching Coverage Checking.
 -}
-
 {-# OPTIONS_GHC -fdefer-type-errors #-} -- EMMA TODO: remove!
 {-# LANGUAGE CPP, GADTs, DataKinds, KindSignatures #-}
 {-# LANGUAGE TupleSections #-}

@@ -1980,7 +1980,7 @@ quantifyConDecl gbl_tvs ty
        ; quantifyTyVars gbl_tvs fvs }
 
 tcConIsInfixH98 :: Name
-             -> HsConDetails (LHsType GhcRn) (Located [LConDeclField GhcRn])
+             -> HsConDetails () (LHsType GhcRn) (Located [LConDeclField GhcRn])
              -> TcM Bool
 tcConIsInfixH98 _   details
   = case details of
@@ -1988,7 +1988,7 @@ tcConIsInfixH98 _   details
            _            -> return False
 
 tcConIsInfixGADT :: Name
-             -> HsConDetails (LHsType GhcRn) (Located [LConDeclField GhcRn])
+             -> HsConDetails () (LHsType GhcRn) (Located [LConDeclField GhcRn])
              -> TcM Bool
 tcConIsInfixGADT con details
   = case details of
@@ -1996,7 +1996,7 @@ tcConIsInfixGADT con details
            RecCon {}    -> return False
            PrefixCon arg_tys           -- See Note [Infix GADT constructors]
                | isSymOcc (getOccName con)
-               , [_ty1,_ty2] <- arg_tys
+               , [_ty1,_ty2] <- hsValArgs arg_tys
                   -> do { fix_env <- getFixityEnv
                         ; return (con `elemNameEnv` fix_env) }
                | otherwise -> return False
@@ -2004,7 +2004,7 @@ tcConIsInfixGADT con details
 tcConArgs :: HsConDeclDetails GhcRn
           -> TcM [(TcType, HsSrcBang)]
 tcConArgs (PrefixCon btys)
-  = mapM tcConArg btys
+  = mapM tcConArg $ hsValArgs btys
 tcConArgs (InfixCon bty1 bty2)
   = do { bty1' <- tcConArg bty1
        ; bty2' <- tcConArg bty2

@@ -506,7 +506,7 @@ collectPatSynArgInfo :: HsPatSynDetails (Located Name)
                      -> ([Name], [Name], Bool)
 collectPatSynArgInfo details =
   case details of
-    PrefixCon names      -> (map unLoc names, [], False)
+    PrefixCon names      -> (map unLoc $ hsValArgs names, [], False) -- EMMA TODO: pattern synonyms
     InfixCon name1 name2 -> (map unLoc [name1, name2], [], True)
     RecCon names         -> (vars, sels, False)
                          where
@@ -810,7 +810,7 @@ tcPatSynBuilderBind (PSB { psb_id = L loc name, psb_def = lpat
                                     (noLoc (EmptyLocalBinds noExt))
 
     args = case details of
-              PrefixCon args     -> args
+              PrefixCon args     -> hsValArgs args -- EMMA TODO: pattern synonyms tc
               InfixCon arg1 arg2 -> [arg1, arg2]
               RecCon args        -> map recordPatSynPatVar args
 
@@ -880,7 +880,7 @@ tcPatToExpr name args pat = go pat
     go1 :: Pat GhcRn -> Either MsgDoc (HsExpr GhcRn)
     go1 (ConPatIn con info)
       = case info of
-          PrefixCon ps  -> mkPrefixConExpr con ps
+          PrefixCon ps  -> mkPrefixConExpr con $ hsValArgs ps -- EMMA TODO: pat syn tc (but actually no idea what to do here)
           InfixCon l r  -> mkPrefixConExpr con [l,r]
           RecCon fields -> mkRecordConExpr con fields
 
@@ -1075,7 +1075,7 @@ tcCollectEx pat = go pat
     go1 _                   = empty
 
     goConDetails :: HsConPatDetails GhcTc -> ([TyVar], [EvVar])
-    goConDetails (PrefixCon ps) = mergeMany . map go $ ps
+    goConDetails (PrefixCon ps) = mergeMany . map go $ hsValArgs ps -- EMMA TODO: pat syn tc
     goConDetails (InfixCon p1 p2) = go p1 `merge` go p2
     goConDetails (RecCon HsRecFields{ rec_flds = flds })
       = mergeMany . map goRecFd $ flds

@@ -5,7 +5,6 @@
 
 Pattern-matching constructors
 -}
-
 {-# OPTIONS_GHC -fdefer-type-errors #-} -- EMMA TODO: remove!
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TypeFamilies #-}

@@ -9,7 +9,6 @@ This module is an extension of @HsSyn@ syntax, for use in the type
 checker.
 -}
 
-{-# OPTIONS_GHC -fdefer-type-errors #-} -- EMMA TODO: remove!
 {-# LANGUAGE CPP, TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -78,7 +77,6 @@ import CoreSyn
 import Control.Monad
 import Data.List  ( partition )
 import Control.Arrow ( second )
-import Data.Either ( rights )
 
 {-
 ************************************************************************
@@ -553,8 +551,8 @@ zonk_bind _ (XHsBindsLR _)                 = panic "zonk_bind"
 zonkPatSynDetails :: ZonkEnv
                   -> HsPatSynDetails (Located TcId)
                   -> HsPatSynDetails (Located Id)
-zonkPatSynDetails env (PrefixCon as) -- EMMA TODO: update!
-  = PrefixCon (map (Right . zonkLIdOcc env) (rights as)) -- EMMA TODO: update!
+zonkPatSynDetails env (PrefixCon as) -- EMMA TODO: pat syn tc
+  = PrefixCon (map (HsValArg . zonkLIdOcc env) (hsValArgs as)) -- EMMA TODO: pat syn tc
 zonkPatSynDetails env (InfixCon a1 a2)
   = InfixCon (zonkLIdOcc env a1) (zonkLIdOcc env a2)
 zonkPatSynDetails env (RecCon flds)
@@ -1316,7 +1314,7 @@ zonk_pat env p@(ConPatOut { pat_arg_tys = tys, pat_tvs = tyvars
               -> mapM_ (checkForLevPoly doc) (dropRuntimeRepArgs new_tys)
             _ -> return ()
 
-        ; (env0, new_tyvars) <- zonkTyBndrsX env tyvars
+        ; (env0, new_tyvars) <- zonkTyBndrsX env tyvars -- EMMA TODO: this may cause a problem
           -- Must zonk the existential variables, because their
           -- /kind/ need potential zonking.
           -- cf typecheck/should_compile/tc221.hs
@@ -1370,13 +1368,12 @@ zonk_pat _ pat = pprPanic "zonk_pat" (ppr pat)
 
 ---------------------------
 zonkConStuff :: ZonkEnv
-             -> HsConDetails (XAppTypeE GhcTcId) (OutPat GhcTcId) (HsRecFields id (OutPat GhcTcId)) -- EMMA TODO: definitely fix!
+             -> HsConDetails Type (OutPat GhcTcId) (HsRecFields id (OutPat GhcTcId))
              -> TcM (ZonkEnv,
-                    HsConDetails (XAppTypeE GhcTcId) (OutPat GhcTc) (HsRecFields id (OutPat GhcTc)))
-zonkConStuff env (PrefixCon pats) -- EMMA TODO: fix case analysis
-  = do  { (env', pats') <- zonkPats env (rights pats) -- EMMA TODO: this is all wrong!
-        ; return (env', PrefixCon $ map Right pats') } -- EMMA TODO: fix as well!
-
+                    HsConDetails Type (OutPat GhcTc) (HsRecFields id (OutPat GhcTc)))
+zonkConStuff env (PrefixCon pats)
+  = do  { (env', pats') <- zonkPrefixConPats env pats -- EMMA TODO: double check that this zonking is good
+        ; return (env', PrefixCon pats') }
 zonkConStuff env (InfixCon p1 p2)
   = do  { (env1, p1') <- zonkPat env  p1
         ; (env', p2') <- zonkPat env1 p2
@@ -1388,6 +1385,20 @@ zonkConStuff env (RecCon (HsRecFields rpats dd))
                                rpats pats'
         ; return (env', RecCon (HsRecFields rpats' dd)) }
         -- Field selectors have declared types; hence no zonking
+
+----------------------------
+zonkPrefixConPats :: ZonkEnv
+                  -> [HsArg (OutPat GhcTcId) Type]
+                  -> TcM (ZonkEnv, [HsArg (OutPat GhcTcId) Type])
+zonkPrefixConPats env [] = return (env, [])
+zonkPrefixConPats env (HsValArg tm : pats) =
+  do { (env1, tm') <- zonkPat env tm
+     ; (env', pats') <- zonkPrefixConPats env1 pats
+     ; return (env', HsValArg tm': pats') }
+zonkPrefixConPats env (HsTypeArg ty : pats) =
+  do { ty' <- zonkTcTypeToType env ty
+     ; (env', pats') <- zonkPrefixConPats env pats
+     ; return (env', HsTypeArg ty': pats') }
 
 ---------------------------
 zonkPats :: ZonkEnv -> [OutPat GhcTcId] -> TcM (ZonkEnv, [OutPat GhcTc])

@@ -317,7 +317,7 @@ tcHsVectInst ty
 
 ----------------------------------------------
 -- | Type-check a visible type application
-tcHsTypeApp :: LHsWcType GhcRn -> Kind -> TcM Type
+tcHsTypeApp :: LHsWcType GhcRn -> Kind -> TcM Type -- EMMA TODO: use this
 -- See Note [Recipe for checking a signature] in TcHsType
 tcHsTypeApp wc_ty kind
   | HsWC { hswc_ext = sig_wcs, hswc_body = hs_ty } <- wc_ty

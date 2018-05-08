@@ -866,7 +866,7 @@ type family XNPlusKPat x
 type family XSigPat    x
 type family XCoPat     x
 type family XXPat      x
-
+type family XConPatDetails x
 
 type ForallXPat (c :: * -> Constraint) (x :: *) =
        ( c (XWildPat   x)
@@ -887,6 +887,7 @@ type ForallXPat (c :: * -> Constraint) (x :: *) =
        , c (XSigPat    x)
        , c (XCoPat     x)
        , c (XXPat      x)
+       , c (XConPatDetails x)
        )
 
 -- =====================================================================
@@ -1129,6 +1130,9 @@ type OutputableX p = -- See Note [OutputableX]
 
   , Outputable (XAppTypeE p)
   , Outputable (XAppTypeE GhcRn)
+
+  , Outputable (XConPatDetails p)
+  , Outputable (XConPatDetails GhcRn)
 
   , Outputable (XHsVectType p)
   , Outputable (XHsVectType GhcRn)

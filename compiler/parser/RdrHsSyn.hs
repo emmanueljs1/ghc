@@ -945,7 +945,7 @@ checkPatterns msg es = mapM (checkPattern msg) es
 checkLPat :: SDoc -> LHsExpr GhcPs -> P (LPat GhcPs)
 checkLPat msg e@(L l _) = checkPat msg l e []
 
-checkPat :: SDoc -> SrcSpan -> LHsExpr GhcPs -> [HsArg (LPat GhcPs) (XAppTypeE GhcPs)]
+checkPat :: SDoc -> SrcSpan -> LHsExpr GhcPs -> [HsArg (LPat GhcPs) (LHsWcType GhcPs)]
          -> P (LPat GhcPs)
 checkPat _ loc (L l e@(HsVar _ (L _ c))) args
   | isRdrDataCon c = return (L loc (ConPatIn (L l c) (PrefixCon args)))

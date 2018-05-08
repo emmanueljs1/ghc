@@ -329,6 +329,10 @@ type instance XNPlusKPat GhcPs = NoExt
 type instance XNPlusKPat GhcRn = NoExt
 type instance XNPlusKPat GhcTc = Type
 
+type instance XConPatDetails  GhcPs = LHsWcType GhcPs
+type instance XConPatDetails  GhcRn = LHsWcType GhcRn
+type instance XConPatDetails  GhcTc = Type
+
 type instance XSigPat GhcPs = (LHsSigWcType GhcPs)
 type instance XSigPat GhcRn = (LHsSigWcType GhcRn)
 type instance XSigPat GhcTc = Type
@@ -340,7 +344,7 @@ type instance XXPat   (GhcPass _) = NoExt
 
 
 -- | Haskell Constructor Pattern Details
-type HsConPatDetails p = HsConDetails (XAppTypeE p) (LPat p) (HsRecFields p (LPat p))
+type HsConPatDetails p = HsConDetails (XConPatDetails p) (LPat p) (HsRecFields p (LPat p))
 
 hsConPatArgs :: HsConPatDetails p -> [LPat p]
 hsConPatArgs (PrefixCon ps) = hsValArgs ps -- EMMA TODO: also give tyargs?
@@ -560,8 +564,8 @@ pprUserCon c (InfixCon p1 p2) = ppr p1 <+> pprInfixOcc c <+> ppr p2
 pprUserCon c details          = pprPrefixOcc c <+> pprConArgs details
 
 
-pprHsArgPat :: (OutputableBndrId (GhcPass p), Outputable (XAppTypeE (GhcPass p))) =>
-  HsArg (LPat (GhcPass p)) (XAppTypeE (GhcPass p)) -> SDoc
+pprHsArgPat :: (OutputableBndrId (GhcPass p), Outputable (XConPatDetails (GhcPass p))) =>
+  HsArg (LPat (GhcPass p)) (XConPatDetails (GhcPass p)) -> SDoc
 pprHsArgPat (HsValArg tm) = pprParendLPat tm
 pprHsArgPat (HsTypeArg ty) = char '@' <> ppr ty
 

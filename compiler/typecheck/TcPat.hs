@@ -6,7 +6,6 @@
 TcPat: Typechecking patterns
 -}
 
-{-# OPTIONS_GHC -fdefer-type-errors #-} -- EMMA TODO: REMOVE!
 {-# LANGUAGE CPP, RankNTypes, TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -407,7 +406,7 @@ tc_pat penv (ViewPat _ expr pat) overall_pat_ty thing_inside
 
 -- Type signatures in patterns
 -- See Note [Pattern coercions] below
-tc_pat penv (SigPat sig_ty pat ) pat_ty thing_inside
+tc_pat penv (SigPat sig_ty pat ) pat_ty thing_inside -- EMMA TODO: use similar logic
   = do  { (inner_ty, tv_binds, wcs, wrap) <- tcPatSig (inPatBind penv)
                                                             sig_ty pat_ty
                 -- Using tcExtendTyVarEnv2 is appropriate here (not scopeTyVars2)
@@ -964,19 +963,17 @@ Suppose (coi, tys) = matchExpectedConType data_tc pat_ty
 tcConArgs :: ConLike -> [TcSigmaType]
           -> Checker (HsConPatDetails GhcRn) (HsConPatDetails GhcTc)
 
--- EMMA TODO: this is all wrong,
--- right now it is assuming
--- that you can never bind
+-- EMMA TODO: this is the main function to change
 tcConArgs con_like arg_tys (PrefixCon arg_pats) penv thing_inside
   = do  { checkTc (con_arity == no_of_args)     -- Check correct arity
                   (arityErr (text "constructor") con_like con_arity no_of_args)
         ; let pats_w_tys = zipEqual "tcConArgs" (hsValArgs arg_pats) arg_tys
         ; (arg_pats', res) <- tcMultiple tcConArg pats_w_tys
                                               penv thing_inside
-        ; return (PrefixCon (map HsValArg arg_pats'), res) }
+        ; return (PrefixCon arg_pats', res) }
   where
     con_arity  = conLikeArity con_like
-    no_of_args = length arg_pats
+    no_of_args = length $ hsValArgs arg_pats
 tcConArgs con_like arg_tys (InfixCon p1 p2) penv thing_inside
   = do  { checkTc (con_arity == 2)      -- Check correct arity
                   (arityErr (text "constructor") con_like con_arity 2)
