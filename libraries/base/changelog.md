@@ -14,8 +14,13 @@
   * Add `Applicative` (for `K1`), `Semigroup` and `Monoid` instances in
     `GHC.Generics`. (#14849)
 
-  * `asinh` for `Float` and `Double` is now numerical stable in the face of
-    large negative arguments (#14927)
+  * `asinh` for `Float` and `Double` is now numerically stable in the face of
+    non-small negative arguments and enormous arguments of either sign. (#14927)
+
+  * `Numeric.showEFloat (Just 0)` now respects the user's requested precision.
+    (#15115)
+    
+  * `Data.Monoid.Alt` now has `Foldable` and `Traversable` instances. (#15099)
 
 ## 4.11.1.0 *TBA*
   * Bundled with GHC 8.4.2

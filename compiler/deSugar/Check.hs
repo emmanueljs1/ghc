@@ -44,7 +44,7 @@ import HscTypes (CompleteMatch(..))
 
 import DsMonad
 import TcSimplify    (tcCheckSatisfiability)
-import TcType        (toTcType, isStringTy, isIntTy, isWordTy)
+import TcType        (isStringTy, isIntTy, isWordTy)
 import Bag
 import ErrUtils
 import Var           (EvVar)
@@ -53,6 +53,7 @@ import Type
 import UniqSupply
 import DsGRHSs       (isTrueLHsExpr)
 import Maybes        (expectJust)
+import qualified GHC.LanguageExtensions as LangExt
 
 import Data.List     (find)
 import Data.Maybe    (catMaybes, isJust, fromMaybe)
@@ -623,12 +624,12 @@ inhabitationCandidates fam_insts ty
       Just (tc, _)
         | tc `elem` trivially_inhabited -> case dcs of
             []    -> return (Left src_ty)
-            (_:_) -> do var <- liftD $ mkPmId (toTcType core_ty)
+            (_:_) -> do var <- liftD $ mkPmId core_ty
                         let va = build_tm (PmVar var) dcs
                         return $ Right [(va, mkIdEq var, emptyBag)]
 
         | pmIsClosedType core_ty -> liftD $ do
-            var  <- mkPmId (toTcType core_ty) -- it would be wrong to unify x
+            var  <- mkPmId core_ty -- it would be wrong to unify x
             alts <- mapM (mkOneConFull var . RealDataCon) (tyConDataCons tc)
             return $ Right [(build_tm va dcs, eq, cs) | (va, eq, cs) <- alts]
       -- For other types conservatively assume that they are inhabited.
@@ -788,21 +789,31 @@ translatePat fam_insts pat = case pat of
       <$> translatePatVec fam_insts (map unLoc ps)
 
   -- overloaded list
-  ListPat (ListPatTc elem_ty (Just (pat_ty, _to_list))) lpats
-    | Just e_ty <- splitListTyConApp_maybe pat_ty
-    , (_, norm_e_ty) <- normaliseType fam_insts Nominal e_ty
-         -- e_ty can be a type family instance, like
-         -- `It (List a)`, but we prefer `a`, see Trac #14547
-    , (_, norm_elem_ty) <- normaliseType fam_insts Nominal elem_ty
-         -- elem_ty is frequently something like
-         -- `Item [Int]`, but we prefer `Int`
-    , norm_elem_ty `eqType` norm_e_ty ->
-        -- We have to ensure that the element types are exactly the same.
-        -- Otherwise, one may give an instance IsList [Int] (more specific than
-        -- the default IsList [a]) with a different implementation for `toList'
-        translatePat fam_insts (ListPat (ListPatTc e_ty Nothing) lpats)
-      -- See Note [Guards and Approximation]
-    | otherwise -> mkCanFailPmPat pat_ty
+  ListPat (ListPatTc _elem_ty (Just (pat_ty, _to_list))) lpats -> do
+    dflags <- getDynFlags
+    if xopt LangExt.RebindableSyntax dflags
+       then mkCanFailPmPat pat_ty
+       else case splitListTyConApp_maybe pat_ty of
+              Just e_ty -> translatePat fam_insts
+                                        (ListPat (ListPatTc e_ty Nothing) lpats)
+              Nothing   -> mkCanFailPmPat pat_ty
+    -- (a) In the presence of RebindableSyntax, we don't know anything about
+    --     `toList`, we should treat `ListPat` as any other view pattern.
+    --
+    -- (b) In the absence of RebindableSyntax,
+    --     - If the pat_ty is `[a]`, then we treat the overloaded list pattern
+    --       as ordinary list pattern. Although we can give an instance
+    --       `IsList [Int]` (more specific than the default `IsList [a]`), in
+    --       practice, we almost never do that. We assume the `_to_list` is
+    --       the `toList` from `instance IsList [a]`.
+    --
+    --     - Otherwise, we treat the `ListPat` as ordinary view pattern.
+    --
+    -- See Trac #14547, especially comment#9 and comment#10.
+    --
+    -- Here we construct CanFailPmPat directly, rather can construct a view
+    -- pattern and do further translation as an optimization, for the reason,
+    -- see Note [Guards and Approximation].
 
   ConPatOut { pat_con     = L _ con
             , pat_arg_tys = arg_tys
@@ -1076,7 +1087,7 @@ An overloaded list @[...]@ should be translated to @x ([...] <- toList x)@. The
 problem is exactly like above, as its solution. For future reference, the code
 below is the *right thing to do*:
 
-   ListPat lpats elem_ty (Just (pat_ty, to_list))
+   ListPat (ListPatTc elem_ty (Just (pat_ty, _to_list))) lpats
      otherwise -> do
        (xp, xe) <- mkPmId2Forms pat_ty
        ps       <- translatePatVec (map unLoc lpats)
@@ -1319,7 +1330,7 @@ allCompleteMatches cl tys = do
 -- * Types and constraints
 
 newEvVar :: Name -> Type -> EvVar
-newEvVar name ty = mkLocalId name (toTcType ty)
+newEvVar name ty = mkLocalId name ty
 
 nameType :: String -> Type -> DsM EvVar
 nameType name ty = do
