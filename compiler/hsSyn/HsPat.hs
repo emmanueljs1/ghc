@@ -567,12 +567,12 @@ pprUserCon c details          = pprPrefixOcc c <+> pprConArgs details
 
 pprHsArgPat :: (OutputableBndrId (GhcPass p), Outputable (XConPatDetails (GhcPass p))) =>
   HsArg (LPat (GhcPass p)) (XConPatDetails (GhcPass p)) -> SDoc
-pprHsArgPat (HsValArg tm) = pprParendLPat tm
+pprHsArgPat (HsValArg tm) = pprParendLPat appPrec tm
 pprHsArgPat (HsTypeArg ty) = char '@' <> ppr ty
 
 pprConArgs :: (OutputableBndrId (GhcPass p))
            => HsConPatDetails (GhcPass p) -> SDoc
-pprConArgs (PrefixCon pats) = sep (map (pprParendLPat appPrec) pats)
+pprConArgs (PrefixCon pats) = sep (map pprHsArgPat pats)
 pprConArgs (InfixCon p1 p2) = sep [ pprParendLPat appPrec p1
                                   , pprParendLPat appPrec p2 ]
 pprConArgs (RecCon rpats)   = ppr rpats
@@ -747,88 +747,6 @@ case in foo to be unreachable, as GHC would mistakenly believe that Nothing'
 is the only thing that could possibly be matched!
 -}
 
-<<<<<<< HEAD
--- | Returns 'True' if a pattern must be parenthesized in order to parse
--- (e.g., the @(x :: Int)@ in @f (x :: Int) = x@).
-hsPatNeedsParens :: Pat a -> Bool
-hsPatNeedsParens (NPlusKPat {})      = True
-hsPatNeedsParens (SplicePat {})      = False
-hsPatNeedsParens (ConPatIn _ ds)     = conPatNeedsParens ds
-hsPatNeedsParens p@(ConPatOut {})    = conPatNeedsParens (pat_args p)
-hsPatNeedsParens (SigPat {})         = True
-hsPatNeedsParens (ViewPat {})        = True
-hsPatNeedsParens (CoPat _ _ p _)     = hsPatNeedsParens p
-hsPatNeedsParens (WildPat {})        = False
-hsPatNeedsParens (VarPat {})         = False
-hsPatNeedsParens (LazyPat {})        = False
-hsPatNeedsParens (BangPat {})        = False
-hsPatNeedsParens (ParPat {})         = False
-hsPatNeedsParens (AsPat {})          = False
-hsPatNeedsParens (TuplePat {})       = False
-hsPatNeedsParens (SumPat {})         = False
-hsPatNeedsParens (ListPat {})        = False
-hsPatNeedsParens (PArrPat {})        = False
-hsPatNeedsParens (LitPat {})         = False
-hsPatNeedsParens (NPat {})           = False
-hsPatNeedsParens (XPat {})           = True -- conservative default
-
--- | Returns 'True' if a constructor pattern must be parenthesized in order
--- to parse.
-conPatNeedsParens :: HsConDetails t a b -> Bool
-conPatNeedsParens (PrefixCon {}) = False
-conPatNeedsParens (InfixCon {})  = True
-conPatNeedsParens (RecCon {})    = False
-
--- | Returns 'True' for compound patterns that need parentheses when used in
--- an argument position.
---
--- Note that this is different from 'hsPatNeedsParens', which only says if
--- a pattern needs to be parenthesized to parse in /any/ position, whereas
--- 'isCompountPat' says if a pattern needs to be parenthesized in an /argument/
--- position. In other words, @'hsPatNeedsParens' x@ implies
--- @'isCompoundPat' x@, but not necessarily the other way around.
-isCompoundPat :: Pat a -> Bool
-isCompoundPat (NPlusKPat {})       = True
-isCompoundPat (SplicePat {})       = False
-isCompoundPat (ConPatIn _ ds)      = isCompoundConPat ds
-isCompoundPat p@(ConPatOut {})     = isCompoundConPat (pat_args p)
-isCompoundPat (SigPat {})          = True
-isCompoundPat (ViewPat {})         = True
-isCompoundPat (CoPat _ _ p _)      = isCompoundPat p
-isCompoundPat (WildPat {})         = False
-isCompoundPat (VarPat {})          = False
-isCompoundPat (LazyPat {})         = False
-isCompoundPat (BangPat {})         = False
-isCompoundPat (ParPat {})          = False
-isCompoundPat (AsPat {})           = False
-isCompoundPat (TuplePat {})        = False
-isCompoundPat (SumPat {})          = False
-isCompoundPat (ListPat {})         = False
-isCompoundPat (PArrPat {})         = False
-isCompoundPat (LitPat _ p)         = isCompoundHsLit p
-isCompoundPat (NPat _ (L _ p) _ _) = isCompoundHsOverLit p
-isCompoundPat (XPat {})            = False -- Assumption
-
--- | Returns 'True' for compound constructor patterns that need parentheses
--- when used in an argument position.
---
--- Note that this is different from 'conPatNeedsParens', which only says if
--- a constructor pattern needs to be parenthesized to parse in /any/ position,
--- whereas 'isCompountConPat' says if a pattern needs to be parenthesized in an
--- /argument/ position. In other words, @'conPatNeedsParens' x@ implies
--- @'isCompoundConPat' x@, but not necessarily the other way around.
-isCompoundConPat :: HsConDetails t a b -> Bool
-isCompoundConPat (PrefixCon args) = not (null args)
-isCompoundConPat (InfixCon {})    = True
-isCompoundConPat (RecCon {})      = False
-
--- | @'parenthesizeCompoundPat' p@ checks if @'isCompoundPat' p@ is true, and
--- if so, surrounds @p@ with a 'ParPat'. Otherwise, it simply returns @p@.
-parenthesizeCompoundPat :: LPat (GhcPass p) -> LPat (GhcPass p)
-parenthesizeCompoundPat lp@(L loc p)
-  | isCompoundPat p = L loc (ParPat NoExt lp)
-  | otherwise       = lp
-=======
 -- | @'patNeedsParens' p pat@ returns 'True' if the pattern @pat@ needs
 -- parentheses under precedence @p@.
 patNeedsParens :: PprPrec -> Pat p -> Bool
@@ -857,7 +775,7 @@ patNeedsParens p = go
 
 -- | @'conPatNeedsParens' p cp@ returns 'True' if the constructor patterns @cp@
 -- needs parentheses under precedence @p@.
-conPatNeedsParens :: PprPrec -> HsConDetails a b -> Bool
+conPatNeedsParens :: PprPrec -> HsConDetails a b c -> Bool
 conPatNeedsParens p = go
   where
     go (PrefixCon args) = p >= appPrec && not (null args)
@@ -870,7 +788,6 @@ parenthesizePat :: PprPrec -> LPat (GhcPass p) -> LPat (GhcPass p)
 parenthesizePat p lpat@(L loc pat)
   | patNeedsParens p pat = L loc (ParPat NoExt lpat)
   | otherwise            = lpat
->>>>>>> db6085b84139f4454cebf34f887cb5560a4fbc7b
 
 {-
 % Collect all EvVars from all constructor patterns

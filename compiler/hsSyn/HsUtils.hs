@@ -446,11 +446,11 @@ nlInfixConPat con l r = noLoc (ConPatIn (noLoc con)
 
 nlConPat :: RdrName -> [LPat GhcPs] -> LPat GhcPs
 nlConPat con pats =
-  noLoc (ConPatIn (noLoc con) (PrefixCon (map (parenthesizePat appPrec) pats)))
+  noLoc (ConPatIn (noLoc con) (PrefixCon (map (HsValArg . parenthesizePat appPrec) pats)))
 
 nlConPatName :: Name -> [LPat GhcRn] -> LPat GhcRn
 nlConPatName con pats =
-  noLoc (ConPatIn (noLoc con) (PrefixCon (map (parenthesizePat appPrec) pats)))
+  noLoc (ConPatIn (noLoc con) (PrefixCon (map (HsValArg . parenthesizePat appPrec) pats)))
 
 nlNullaryConPat :: IdP id -> LPat id
 nlNullaryConPat con = noLoc (ConPatIn (noLoc con) (PrefixCon []))
